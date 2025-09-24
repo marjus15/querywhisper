@@ -229,3 +229,4 @@ If the build fails, please fix all issues before submitting your contribution.
 - Check out the existing issues for contribution opportunities
 
 We appreciate every contribution, no matter how small. Thank you for helping make Elysia better! 🎉
+"# querywhisper" 
