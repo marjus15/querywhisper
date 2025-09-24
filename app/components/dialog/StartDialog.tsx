@@ -67,7 +67,7 @@ const StartDialog: React.FC = () => {
   };
 
   const handleSetupElysia = () => {
-    changePage("settings");
+    changePage("data");
     if (dontShowAgain) {
       localStorage.setItem(dontShowAgainKey, "true");
     }
@@ -89,7 +89,7 @@ const StartDialog: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex gap-3 items-center justify-start">
               <p className="text-primary text-3xl font-bold">
-                Welcome to Elysia!
+                Welcome to QueryWhisper!
               </p>
             </DialogTitle>
             <DialogDescription className="flex justify-start">

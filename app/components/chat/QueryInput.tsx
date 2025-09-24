@@ -33,7 +33,13 @@ const QueryInput: React.FC<QueryInputProps> = ({
   const [showRoute, setShowRoute] = useState<boolean>(false);
 
   const triggerQuery = (_query: string) => {
-    if (_query.trim() === "" || currentStatus !== "") return;
+    if (_query.trim() === "") return;
+    console.log(
+      "QueryInput - triggerQuery called with:",
+      _query,
+      "currentStatus:",
+      currentStatus
+    );
     handleSendQuery(_query, route, mimick);
     setQuery("");
   };

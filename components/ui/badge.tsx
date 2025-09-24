@@ -9,12 +9,15 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "text-primary",
+        outline: "border border-border text-foreground",
+        secondary: "bg-secondary text-secondary-foreground",
+        destructive: "bg-destructive text-destructive-foreground",
       },
     },
     defaultVariants: {
       variant: "default",
     },
-  },
+  }
 );
 
 export interface BadgeProps

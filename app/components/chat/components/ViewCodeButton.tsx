@@ -84,7 +84,7 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
                   transition={{ duration: 0.2, delay: 0.1 }}
                   className="text-highlight text-xs"
                 >
-                  Source Code
+                  Query
                 </motion.span>
               )}
             </AnimatePresence>

@@ -15,7 +15,9 @@ import { RiFlowChart } from "react-icons/ri";
 import FlowDisplay from "../components/chat/FlowDisplay";
 import { ReactFlowProvider } from "@xyflow/react";
 import { CgDebug } from "react-icons/cg";
+import { TbDatabase } from "react-icons/tb";
 import DebugView from "../components/debugging/debug";
+import DatabaseSchemaVisualization from "../components/explorer/DatabaseSchemaVisualization";
 import { SocketContext } from "../components/contexts/SocketContext";
 import { SessionContext } from "../components/contexts/SessionContext";
 import { ConversationContext } from "../components/contexts/ConversationContext";
@@ -24,7 +26,6 @@ import { v4 as uuidv4 } from "uuid";
 import { useDebug } from "../components/debugging/useDebug";
 import RateLimitDialog from "../components/navigation/RateLimitDialog";
 import { IoRefresh } from "react-icons/io5";
-import { TbSettings } from "react-icons/tb";
 
 import {
   DropdownMenu,
@@ -38,7 +39,6 @@ import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { Separator } from "@/components/ui/separator";
 import { CollectionContext } from "../components/contexts/CollectionContext";
-import TreeSettingsView from "../components/configuration/TreeSettingsView";
 
 const AbstractSphereScene = dynamic(
   () => import("@/app/components/threejs/AbstractSphere"),
@@ -55,9 +55,12 @@ export default function ChatPage() {
     addTreeToConversation,
     addQueryToConversation,
     currentConversation,
+    setCurrentConversation,
     conversations,
+    setConversations,
     updateFeedbackForQuery,
     loadingConversation,
+    addConversation,
   } = useContext(ConversationContext);
 
   const { getRandomPrompts, collections } = useContext(CollectionContext);
@@ -69,7 +72,7 @@ export default function ChatPage() {
   }>({});
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [currentStatus, setCurrentStatus] = useState<string>("");
-  const [mode, setMode] = useState<"chat" | "flow" | "debug" | "settings">(
+  const [mode, setMode] = useState<"chat" | "flow" | "debug" | "schema">(
     "chat"
   );
   const [currentTrees, setCurrentTrees] = useState<DecisionTreeNode[]>([]);
@@ -95,17 +98,49 @@ export default function ChatPage() {
     route: string = "",
     mimick: boolean = false
   ) => {
-    if (query.trim() === "" || currentStatus !== "") return;
+    if (query.trim() === "") return;
+    console.log(
+      "ChatPage - handleSendQuery called with:",
+      query,
+      "currentStatus:",
+      currentStatus
+    );
     const trimmedQuery = query.trim();
     const query_id = uuidv4();
 
-    const _conversation = conversations.find(
-      (c) => c.id === currentConversation
-    );
+    console.log("ChatPage - currentConversation:", currentConversation);
+    console.log("ChatPage - conversations length:", conversations.length);
+
+    let _conversation = conversations.find((c) => c.id === currentConversation);
+
+    console.log("ChatPage - found conversation:", _conversation);
 
     if (_conversation === null || _conversation === undefined) {
-      return;
-    } else {
+      console.log("ChatPage - No conversation found, creating a simple one...");
+      // Create a simple conversation without API calls
+      const conversation_id = uuidv4();
+      const simpleConversation = {
+        id: conversation_id,
+        name: "New Conversation",
+        queries: {},
+        current: "",
+        tree: [],
+        base_tree: null,
+        initialized: true,
+        error: false,
+        enabled_collections: {},
+        tree_updates: [],
+        timestamp: new Date(),
+      };
+
+      // Add to conversations list
+      setConversations((prev) => [...prev, simpleConversation]);
+      setCurrentConversation(conversation_id);
+      _conversation = simpleConversation;
+      console.log("ChatPage - Created simple conversation:", conversation_id);
+    }
+
+    if (_conversation) {
       sendQuery(
         id || "",
         trimmedQuery,
@@ -118,10 +153,6 @@ export default function ChatPage() {
       addTreeToConversation(_conversation.id);
       addQueryToConversation(_conversation.id, trimmedQuery, query_id);
     }
-  };
-
-  const selectSettings = () => {
-    setMode("settings");
   };
 
   const selectChat = () => {
@@ -192,7 +223,7 @@ export default function ChatPage() {
             />
           </div>
         </div>
-        <p className="text-primary text-xl shine">Loading Elysia...</p>
+        <p className="text-primary text-xl shine">Loading QueryWhisper...</p>
       </div>
     );
   }
@@ -219,10 +250,10 @@ export default function ChatPage() {
                     <CgDebug size={14} className="text-accent" />
                     <p className="text-accent">Debug</p>
                   </>
-                ) : mode === "settings" ? (
+                ) : mode === "schema" ? (
                   <>
-                    <TbSettings size={14} className="text-accent" />
-                    <p className="text-accent">Settings</p>
+                    <TbDatabase size={14} className="text-accent" />
+                    <p className="text-accent">Schema</p>
                   </>
                 ) : null}
                 <LuChevronDown size={14} className="text-accent" />
@@ -237,9 +268,9 @@ export default function ChatPage() {
                 <RiFlowChart size={14} />
                 Tree
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setMode("settings")}>
-                <TbSettings size={14} />
-                Settings
+              <DropdownMenuItem onClick={() => setMode("schema")}>
+                <TbDatabase size={14} />
+                Schema
               </DropdownMenuItem>
               {process.env.NODE_ENV === "development" && (
                 <DropdownMenuItem onClick={() => setMode("debug")}>
@@ -305,7 +336,6 @@ export default function ChatPage() {
               handleSendQuery={handleSendQuery}
               addDisplacement={addDisplacement}
               addDistortion={addDistortion}
-              selectSettings={selectSettings}
             />
           </div>
           {Object.keys(currentQuery).length === 0 && (
@@ -327,7 +357,7 @@ export default function ChatPage() {
             <div className="absolute flex flex-col justify-center items-center w-full h-full gap-3 fade-in">
               <div className="flex items-center gap-4">
                 <p className="text-primary text-3xl font-semibold">
-                  Ask Elysia
+                  QueryWhisper
                 </p>
                 <Button
                   variant="default"
@@ -429,12 +459,10 @@ export default function ChatPage() {
           currentConversation={currentConversation || ""}
           conversations={conversations}
         />
-      ) : mode === "settings" ? (
-        <TreeSettingsView
-          user_id={id || ""}
-          conversation_id={currentConversation || ""}
-          selectChat={selectChat}
-        />
+      ) : mode === "schema" ? (
+        <ReactFlowProvider>
+          <DatabaseSchemaVisualization className="h-[calc(100vh-120px)]" />
+        </ReactFlowProvider>
       ) : null}
       {showRateLimitDialog && <RateLimitDialog />}
     </div>

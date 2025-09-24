@@ -229,7 +229,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
           } else {
             showErrorToast(
               "Error analyzing " + collection.name + "...",
-              "Connection to Elysia lost (Socket: " +
+              "Connection to QueryWhisper lost (Socket: " +
                 socket +
                 ") (ID: " +
                 user_id +

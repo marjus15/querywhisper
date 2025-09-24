@@ -38,7 +38,7 @@ const DataTable: React.FC<DataTableProps> = ({
     setSelectedRow(null);
   }, [data, header]);
 
-  if (!data) return null;
+  if (!data || !header) return null;
 
   const containerStyle =
     stickyHeaders && maxHeight

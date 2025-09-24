@@ -36,7 +36,7 @@ const CodeView: React.FC<CodeDisplayProps> = ({
     <div className="flex flex-col gap-6 overflow-hidden chat-animation">
       <div className="w-full flex justify-between items-center">
         <div className="flex gap-2 items-center">
-          <p>Source Code</p>
+          <p>Query</p>
         </div>
         <Button
           variant={"ghost"}
@@ -46,54 +46,64 @@ const CodeView: React.FC<CodeDisplayProps> = ({
           <IoClose size={12} />
         </Button>
       </div>
-      {payload.map((item, index) => (
-        <div key={index} className="w-full">
-          <div className="flex justify-start items-center w-full">
-            <div className="flex gap-2 items-center w-full">
-              {payload[0].metadata.collection_name && (
-                <div className="flex flex-row justify-between items-center w-full">
-                  <div className="flex gap-2 justify-start items-center">
-                    <div className="text-highlight bg-highlight/10 h-9 w-9 rounded-md flex items-center justify-center">
-                      <FaCode size={14} className="text-highlight" />
+      {payload.map((item, index) => {
+        // Safety check: ensure item has the required structure
+        if (!item || !item.code || !item.code.text) {
+          console.warn("CodeView: Invalid item structure", item);
+          return null;
+        }
+
+        return (
+          <div key={index} className="w-full">
+            <div className="flex justify-start items-center w-full">
+              <div className="flex gap-2 items-center w-full">
+                {item.metadata?.collection_name && (
+                  <div className="flex flex-row justify-between items-center w-full">
+                    <div className="flex gap-2 justify-start items-center">
+                      <div className="text-highlight bg-highlight/10 h-9 w-9 rounded-md flex items-center justify-center">
+                        <FaCode size={14} className="text-highlight" />
+                      </div>
+                      {item.metadata.collection_name}
                     </div>
-                    {item.metadata.collection_name}
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="relative">
-            <div className="overflow-y-scroll">
-              <div className="absolute top-2 right-0 p-3 flex gap-1">
-                <Button
-                  className="bg-accent/10 hover:bg-accent/20 h-9 w-9"
-                  onClick={() =>
-                    routerChangeCollection(item.metadata.collection_name)
-                  }
-                >
-                  <FaTable size={14} className="text-accent" />
-                </Button>
-                <CopyToClipboardButton copyText={item.metadata.code.text} />
+                )}
               </div>
-              <SyntaxHighlighter
-                language={item.metadata.code.language}
-                wrapLongLines={true}
-                showLineNumbers={true}
-                style={oneDark}
-                customStyle={{
-                  backgroundColor: "#202020",
-                  color: "#f2f2f2",
-                  width: "100%",
-                  maxHeight: "calc(70vh - 2rem)",
-                }}
-                className="rounded-lg overflow-y-scroll"
-              >
-                {item.metadata.code.text}
-              </SyntaxHighlighter>
+            </div>
+            <div className="relative">
+              <div className="overflow-y-scroll">
+                <div className="absolute top-2 right-0 p-3 flex gap-1">
+                  {item.metadata?.collection_name && (
+                    <Button
+                      className="bg-accent/10 hover:bg-accent/20 h-9 w-9"
+                      onClick={() =>
+                        routerChangeCollection(item.metadata.collection_name)
+                      }
+                    >
+                      <FaTable size={14} className="text-accent" />
+                    </Button>
+                  )}
+                  <CopyToClipboardButton copyText={item.code.text} />
+                </div>
+                <SyntaxHighlighter
+                  language={item.code.language || "sql"}
+                  wrapLongLines={true}
+                  showLineNumbers={true}
+                  style={oneDark}
+                  customStyle={{
+                    backgroundColor: "#202020",
+                    color: "#f2f2f2",
+                    width: "100%",
+                    maxHeight: "calc(70vh - 2rem)",
+                  }}
+                  className="rounded-lg overflow-y-scroll"
+                >
+                  {item.code.text}
+                </SyntaxHighlighter>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

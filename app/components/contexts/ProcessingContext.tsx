@@ -51,6 +51,14 @@ export const ProcessingProvider = ({
   }, []);
 
   useEffect(() => {
+    // Disable WebSocket connection for now since backend doesn't support it
+    if (process.env.NODE_ENV === "development") {
+      console.log("Processing Socket disabled - backend uses REST API");
+    }
+    return;
+
+    // Original WebSocket code commented out
+    /*
     if (initialRef.current) {
       return;
     }
@@ -117,6 +125,7 @@ export const ProcessingProvider = ({
         fetchCollections();
       }
     };
+    */
   }, [reconnect]);
 
   useEffect(() => {

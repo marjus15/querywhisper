@@ -1,11 +1,16 @@
 "use client";
 
 import { createContext, useEffect, useState } from "react";
-import { Message } from "@/app/types/chat";
-import { getWebsocketHost } from "../host";
-import { useContext, useRef } from "react";
+import {
+  Message,
+  TextPayload,
+  ErrorPayload,
+  ResultPayload,
+} from "@/app/types/chat";
+import { useContext } from "react";
 import { ConversationContext } from "./ConversationContext";
 import { ToastContext } from "./ToastContext";
+import { ApiContext } from "./ApiContext";
 
 export const SocketContext = createContext<{
   socketOnline: boolean;
@@ -25,92 +30,56 @@ export const SocketContext = createContext<{
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const {
     setConversationStatus,
-    setAllConversationStatuses,
-    handleAllConversationsError,
-    getAllEnabledCollections,
     handleWebsocketMessage,
+    addQueryToConversation,
   } = useContext(ConversationContext);
 
   const { showErrorToast, showSuccessToast } = useContext(ToastContext);
+  const { askQuestion, testConnection } = useContext(ApiContext);
 
   const [socketOnline, setSocketOnline] = useState(false);
-  const [socket, setSocket] = useState<WebSocket>();
-  const [reconnect, setReconnect] = useState(false);
-  const initialRef = useRef(false);
+  const [hasShownInitialConnection, setHasShownInitialConnection] =
+    useState(false);
 
+  // Test connection to backend on component mount
   useEffect(() => {
-    setReconnect(true);
-  }, []);
-
-  useEffect(() => {
-    if (!initialRef.current) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      if (!socketOnline || socket?.readyState === WebSocket.CLOSED || !socket) {
-        console.log("Elysia not online, trying to reconnect...");
-        initialRef.current = false;
-        setReconnect((prev) => !prev);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [socketOnline, socket]);
-
-  useEffect(() => {
-    if (initialRef.current) {
-      return;
-    }
-
-    initialRef.current = true;
-
-    const socketHost = getWebsocketHost() + "query";
-    const localSocket = new WebSocket(socketHost);
-
-    localSocket.onopen = () => {
-      setSocketOnline(true);
-      showSuccessToast("Connected to Elysia");
-      if (process.env.NODE_ENV === "development") {
-        console.log("Socket opened");
-      }
-    };
-
-    localSocket.onmessage = (event) => {
+    const checkConnection = async (showToasts: boolean = true) => {
       try {
-        const message: Message = JSON.parse(event.data);
-        handleWebsocketMessage(message);
+        const isOnline = await testConnection();
+        const wasOffline = !socketOnline;
+        setSocketOnline(isOnline);
+
+        if (showToasts) {
+          if (isOnline && (wasOffline || !hasShownInitialConnection)) {
+            showSuccessToast("Connected to Backend");
+            setHasShownInitialConnection(true);
+          } else if (!isOnline && wasOffline) {
+            showErrorToast("Failed to connect to Backend");
+          }
+        }
       } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error(error);
+        console.error("Connection test failed:", error);
+        const wasOnline = socketOnline;
+        setSocketOnline(false);
+        if (showToasts && wasOnline) {
+          showErrorToast("Connection to Backend failed");
         }
       }
     };
 
-    localSocket.onerror = (error) => {
-      if (process.env.NODE_ENV === "development") {
-        console.log(error);
-      }
-      setSocketOnline(false);
-      setSocket(undefined);
-      setAllConversationStatuses("");
-      handleAllConversationsError();
-      showErrorToast("Connection to Elysia lost");
-    };
+    // Initial connection check with toast
+    checkConnection(true);
 
-    localSocket.onclose = () => {
-      setSocketOnline(false);
-      setAllConversationStatuses("");
-      setSocket(undefined);
-      handleAllConversationsError();
-      showErrorToast("Connection to Elysia lost");
-      if (process.env.NODE_ENV === "development") {
-        console.log("Socket closed");
-      }
-    };
-
-    setSocket(localSocket);
-  }, [reconnect]);
+    // Check connection every 30 seconds without showing success toasts
+    const interval = setInterval(() => checkConnection(false), 30000);
+    return () => clearInterval(interval);
+  }, [
+    testConnection,
+    showErrorToast,
+    showSuccessToast,
+    socketOnline,
+    hasShownInitialConnection,
+  ]);
 
   const sendQuery = async (
     user_id: string,
@@ -120,28 +89,129 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     route: string = "",
     mimick: boolean = false
   ) => {
-    setConversationStatus("Thinking...", conversation_id);
-    const enabled_collections = getAllEnabledCollections();
+    try {
+      setConversationStatus("Thinking...", conversation_id);
 
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `Sending query with enabled collections: ${enabled_collections} to conversation ${conversation_id}`
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `Sending query: "${query}" to conversation ${conversation_id}`
+        );
+      }
+
+      // Use the backend /ask endpoint
+      console.log("SocketContext - About to call askQuestion with:", query);
+      const response = await askQuestion(query);
+      console.log("SocketContext - Received response:", response);
+
+      if (response.success) {
+        // Create messages that match the existing frontend expectations
+        const textMessage: Message = {
+          id: query_id + "_text",
+          type: "text",
+          conversation_id: conversation_id,
+          user_id: user_id,
+          query_id: query_id,
+          payload: {
+            text: formatResponseContent(response),
+          } as TextPayload,
+        };
+
+        // If we have SQL query and data, also create a result message
+        if (response.generated_sql && response.data) {
+          const resultMessage: Message = {
+            id: query_id + "_result",
+            type: "result",
+            conversation_id: conversation_id,
+            user_id: user_id,
+            query_id: query_id,
+            payload: {
+              type: "table",
+              metadata: {
+                sql_query: response.generated_sql,
+                execution_time_ms: response.execution_time_ms,
+                row_count: response.row_count,
+                warnings: response.warnings,
+                suggestions: response.suggestions,
+              },
+              code: {
+                language: "sql",
+                title: "Generated SQL Query",
+                text: response.generated_sql,
+              },
+              objects: response.data,
+            } as ResultPayload,
+          };
+
+          // Send both messages
+          handleWebsocketMessage(textMessage);
+          handleWebsocketMessage(resultMessage);
+        } else {
+          // Just send the text message
+          handleWebsocketMessage(textMessage);
+        }
+
+        setConversationStatus("", conversation_id);
+        return true;
+      } else {
+        // Handle error response
+        const errorMessage: Message = {
+          id: query_id + "_error",
+          type: "error",
+          conversation_id: conversation_id,
+          user_id: user_id,
+          query_id: query_id,
+          payload: {
+            error: response.error || "Failed to process query",
+          } as ErrorPayload,
+        };
+
+        handleWebsocketMessage(errorMessage);
+        setConversationStatus("", conversation_id);
+        showErrorToast("Query failed", response.error || "Unknown error");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error sending query:", error);
+      setConversationStatus("", conversation_id);
+      showErrorToast("Connection error", "Failed to send query to backend");
+      return false;
+    }
+  };
+
+  const formatResponseContent = (response: any): string => {
+    if (!response.data || response.data.length === 0) {
+      return "No results found for your query.";
     }
 
-    socket?.send(
-      JSON.stringify({
-        user_id,
-        query,
-        query_id,
-        conversation_id,
-        collection_names: enabled_collections,
-        route,
-        mimick,
-      })
-    );
+    // Format the data as a simple text response
+    const rowCount = response.row_count || response.data.length;
+    let content = `Found ${rowCount} result${rowCount !== 1 ? "s" : ""}:\n\n`;
 
-    return Promise.resolve(true);
+    // Add a simple table format
+    if (response.columns && response.data.length > 0) {
+      content += `**${response.columns.join(" | ")}**\n`;
+      content += `${response.columns.map(() => "---").join(" | ")}\n`;
+
+      // Show first few rows
+      const displayRows = response.data.slice(0, 10);
+      displayRows.forEach((row: any) => {
+        const values = response.columns.map((col: string) => {
+          const value = row[col];
+          return value !== null && value !== undefined ? String(value) : "";
+        });
+        content += `${values.join(" | ")}\n`;
+      });
+
+      if (response.data.length > 10) {
+        content += `\n... and ${response.data.length - 10} more rows`;
+      }
+    }
+
+    if (response.execution_time_ms) {
+      content += `\n\n*Query executed in ${response.execution_time_ms}ms*`;
+    }
+
+    return content;
   };
 
   return (
