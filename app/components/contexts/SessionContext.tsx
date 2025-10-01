@@ -7,6 +7,7 @@ import { saveConfig } from "@/app/api/saveConfig";
 import { UserConfig } from "@/app/types/objects";
 import { getConfigList } from "@/app/api/getConfigList";
 import { getConfig } from "@/app/api/getConfig";
+import { supabase } from "@/lib/supabase";
 import {
   BasePayload,
   ConfigListEntry,
@@ -87,8 +88,40 @@ export const SessionProvider = ({
 
   const [showRateLimitDialog, setShowRateLimitDialog] =
     useState<boolean>(false);
-  const id = useDeviceId();
+  const deviceId = useDeviceId();
+  const [id, setId] = useState<string | null>(null);
   const [userConfig, setUserConfig] = useState<UserConfig | null>(null);
+
+  // Get authenticated user ID from Supabase
+  useEffect(() => {
+    const getAuthenticatedUserId = async () => {
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (error) {
+          console.error("Error getting authenticated user:", error);
+          // Fallback to device ID if no authenticated user
+          setId(deviceId);
+          return;
+        }
+
+        if (user) {
+          console.log("🔍 Authenticated user ID:", user.id);
+          setId(user.id);
+        } else {
+          console.log("⚠️ No authenticated user, using device ID");
+          setId(deviceId);
+        }
+      } catch (error) {
+        console.error("Error in getAuthenticatedUserId:", error);
+        setId(deviceId);
+      }
+    };
+
+    getAuthenticatedUserId();
+  }, [deviceId]);
   const [configIDs, setConfigIDs] = useState<ConfigListEntry[]>([]);
   const [correctSettings, setCorrectSettings] =
     useState<CorrectSettings | null>(null);
@@ -117,19 +150,23 @@ export const SessionProvider = ({
     if (!user_id) {
       return;
     }
-    const configList = await getConfigList(user_id);
+    // TODO: Commented out to avoid 404 error - endpoint not implemented
+    // const configList = await getConfigList(user_id);
 
-    if (configList.error) {
-      showErrorToast("Failed to Load Configuration List", configList.error);
-    }
+    // if (configList.error) {
+    //   showErrorToast("Failed to Load Configuration List", configList.error);
+    // }
 
-    // Sort configs by last_used date in descending order (most recent first)
-    const sortedConfigs = configList.configs.sort((a, b) => {
-      return (
-        new Date(b.last_update_time).getTime() -
-        new Date(a.last_update_time).getTime()
-      );
-    });
+    // // Sort configs by last_used date in descending order (most recent first)
+    // const sortedConfigs = configList.configs.sort((a, b) => {
+    //   return (
+    //     new Date(b.last_update_time).getTime() -
+    //     new Date(a.last_update_time).getTime()
+    //   );
+    // });
+
+    // Mock empty config list for now
+    const sortedConfigs: any[] = [];
     setConfigIDs(sortedConfigs);
     setLoadingConfigs(false);
   };

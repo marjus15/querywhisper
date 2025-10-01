@@ -70,9 +70,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     // Initial connection check with toast
     checkConnection(true);
 
+    // TODO: Commented out to avoid repeated /test calls - not needed for development
     // Check connection every 30 seconds without showing success toasts
-    const interval = setInterval(() => checkConnection(false), 30000);
-    return () => clearInterval(interval);
+    // const interval = setInterval(() => checkConnection(false), 30000);
+    // return () => clearInterval(interval);
   }, [
     testConnection,
     showErrorToast,

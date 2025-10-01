@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RouterContext } from "../contexts/RouterContext";
 import { CollectionContext } from "../contexts/CollectionContext";
+import { UserProfile } from "../auth/UserProfile";
 import { SessionContext } from "../contexts/SessionContext";
 import { useDatabase } from "../contexts/DatabaseContext";
 import packageJson from "../../../package.json";
@@ -178,99 +179,15 @@ const SidebarComponent: React.FC = () => {
           currentPage === "feedback" ||
           currentPage === "display") && <EvalSubMenu />}
       </SidebarContent>
-      {/* <SidebarFooter>
+      <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              className="w-full justify-start items-center"
-              onClick={() => openNewTab("https://weaviate.github.io/elysia/")}
-            >
-              <CgFileDocument />
-              <span>Documentation</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="w-full justify-start items-center"
-              onClick={() => openNewTab("https://github.com/weaviate/elysia")}
-            >
-              <FaGithub />
-              <span>Github</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  <img
-                    src={`${public_path}weaviate-logo.svg`}
-                    alt="Weaviate"
-                    className="w-4 h-4"
-                  />
-                  <p>Powered by Weaviate</p>
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                side="top"
-                className="w-[--radix-popper-anchor-width]"
-              >
-                <DropdownMenuItem
-                  onClick={() => openNewTab("https://weaviate.io/")}
-                >
-                  <CgWebsite />
-                  <span>Website</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    openNewTab("https://weaviate.io/product/query-agent")
-                  }
-                >
-                  <RiRobot2Line />
-                  <span>Weaviate Query Agent</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => openNewTab("https://newsletter.weaviate.io/")}
-                >
-                  <IoNewspaperOutline />
-                  <span>Newsletter</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    openNewTab("https://github.com/weaviate/weaviate")
-                  }
-                >
-                  <FaGithub />
-                  <span>GitHub</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    openNewTab(
-                      "https://www.linkedin.com/company/weaviate-io/posts/?feedView=all"
-                    )
-                  }
-                >
-                  <FaLinkedin />
-                  <span>LinkedIn</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => openNewTab("https://x.com/weaviate_io")}
-                >
-                  <FaSquareXTwitter />
-                  <span>X</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    openNewTab("https://www.youtube.com/@Weaviate")
-                  }
-                >
-                  <FaYoutube />
-                  <span>YouTube</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center justify-between w-full p-2">
+              <UserProfile />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
-      </SidebarFooter> */}
+      </SidebarFooter>
     </Sidebar>
   );
 };

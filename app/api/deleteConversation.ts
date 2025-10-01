@@ -1,5 +1,5 @@
 import { BasePayload } from "@/app/types/payloads";
-import { host } from "@/app/components/host";
+import { apiClient } from "@/lib/api-client";
 
 export async function deleteConversation(
   user_id: string,
@@ -7,28 +7,15 @@ export async function deleteConversation(
 ): Promise<BasePayload> {
   const startTime = performance.now();
   try {
-    // TODO: change to DELETE once backend supports it
-    const response = await fetch(
-      `${host}/db/${user_id}/delete_tree/${conversation_id}`,
-      {
-        method: "DELETE",
-        body: JSON.stringify({}),
-      },
-    );
-
-    if (!response.ok) {
-      console.error(
-        `Error deleting conversation ${conversation_id}! status: ${response.status} ${response.statusText}`,
-      );
-      return {
-        error: `Error deleting conversation ${conversation_id}`,
-      };
-    }
-
-    const data: BasePayload = await response.json();
+    console.log("🗑️ Deleting conversation:", conversation_id, "for user:", user_id);
+    
+    const data: BasePayload = await apiClient.delete<BasePayload>(`/db/${user_id}/delete_tree/${conversation_id}`);
+    
+    console.log("✅ Conversation deleted:", conversation_id);
+    
     return data;
   } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error("❌ Failed to delete conversation:", conversation_id, error);
     return {
       error: `Error deleting conversation ${conversation_id}`,
     };

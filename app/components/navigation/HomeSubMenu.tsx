@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { FaCircle } from "react-icons/fa";
 
 import { ConversationContext } from "../contexts/ConversationContext";
@@ -38,6 +38,14 @@ const HomeSubMenu: React.FC = () => {
     creatingNewConversation,
     loadingConversation,
   } = useContext(ConversationContext);
+
+  // Debug: Track when conversationPreviews changes
+  useEffect(() => {
+    console.log(
+      "🔍 HomeSubMenu - conversationPreviews updated:",
+      conversationPreviews
+    );
+  }, [conversationPreviews]);
 
   return (
     <SidebarGroup>

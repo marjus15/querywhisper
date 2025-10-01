@@ -34,6 +34,7 @@ import { getSuggestions } from "@/app/api/getSuggestions";
 import { deleteConversation } from "@/app/api/deleteConversation";
 import { addFeedback } from "@/app/api/addFeedback";
 import { deleteFeedback } from "@/app/api/deleteFeedback";
+import { startConversation } from "@/app/api/startConversation";
 import { RouterContext } from "./RouterContext";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -45,7 +46,10 @@ export const ConversationContext = createContext<{
   creatingNewConversation: boolean;
   setCreatingNewConversation: (creatingNewConversation: boolean) => void;
   loadingConversations: boolean;
-  addConversation: (user_id: string) => Promise<Conversation | null>;
+  addConversation: (
+    user_id: string,
+    title?: string
+  ) => Promise<Conversation | null>;
   removeConversation: (conversation_id: string) => void;
   selectConversation: (id: string) => void;
   setConversationStatus: (status: string, conversationId: string) => void;
@@ -146,6 +150,7 @@ export const ConversationProvider = ({
   const pathname = usePathname();
 
   const initial_ref = useRef<boolean>(false);
+  const conversation_creation_attempted = useRef<boolean>(false);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationPreviews, setConversationPreviews] = useState<{
@@ -170,21 +175,40 @@ export const ConversationProvider = ({
   const loadConversationsFromDB = async () => {
     if (!id) return;
     setLoadingConversations(true);
-    const data: SavedConversationPayload = await loadConversations(id || "");
 
-    let hasConversations = false;
-    for (const [key, value] of Object.entries(data.trees)) {
-      if (value && value.title && value.last_update_time) {
-        setConversationPreviews((prev) => ({ ...prev, [key]: value }));
-        hasConversations = true;
+    try {
+      console.log("🔄 Loading conversations from database for user:", id);
+      const data: SavedConversationPayload = await loadConversations(id || "");
+
+      let hasConversations = false;
+      if (data.trees && Object.keys(data.trees).length > 0) {
+        for (const [key, value] of Object.entries(data.trees)) {
+          if (value && value.title && value.last_update_time) {
+            setConversationPreviews((prev) => ({ ...prev, [key]: value }));
+            hasConversations = true;
+          }
+        }
+        console.log(
+          `✅ Loaded ${Object.keys(data.trees).length} conversations from database`
+        );
+      } else {
+        console.log("ℹ️ No conversations found in database");
       }
-    }
 
-    setLoadingConversations(false);
+      setLoadingConversations(false);
 
-    // If no conversations were loaded, automatically create a new one
-    if (!hasConversations && !creatingNewConversation) {
-      await startNewConversation();
+      // No automatic conversation creation - conversations are created only when user explicitly starts them
+      console.log("✅ Conversation loading completed - no auto-creation");
+    } catch (error) {
+      console.error("❌ Failed to load conversations from database:", error);
+      setLoadingConversations(false);
+
+      // If it's a 403 error, it might be a user ID mismatch - log it but don't crash
+      if (error instanceof Error && error.message.includes("403")) {
+        console.warn(
+          "⚠️ 403 error - possible user ID mismatch in saved_trees endpoint"
+        );
+      }
     }
   };
 
@@ -268,7 +292,8 @@ export const ConversationProvider = ({
   };
 
   const addConversation = async (
-    user_id: string
+    user_id: string,
+    title?: string
   ): Promise<Conversation | null> => {
     if (!user_id?.trim()) {
       return null;
@@ -276,42 +301,66 @@ export const ConversationProvider = ({
 
     if (creatingNewConversation) return null;
 
-    const conversation_id = uuidv4();
     setCreatingNewConversation(true);
-    const [tree] = await Promise.all([
-      getDecisionTree(user_id, conversation_id),
-    ]);
 
-    if (tree === null || collections === null || tree.tree === null) {
+    try {
+      // First, create the conversation session in the backend
+      const backendResponse = await startConversation();
+      const conversation_id = backendResponse.session_id;
+
+      console.log("✅ Backend conversation created:", conversation_id);
+
+      const [tree] = await Promise.all([
+        getDecisionTree(user_id, conversation_id),
+      ]);
+
+      if (tree === null || collections === null || tree.tree === null) {
+        setCreatingNewConversation(false);
+        return null;
+      }
+
+      const newConversation: Conversation = {
+        ...initialConversation,
+        id: conversation_id,
+        name: title || initialConversation.name,
+        timestamp: new Date(),
+        tree: [tree.tree],
+        base_tree: tree.tree,
+        enabled_collections: collections.reduce(
+          (acc, c) => ({ ...acc, [c.name]: true }),
+          {}
+        ),
+      };
+      setConversations([...(conversations || []), newConversation]);
+      setCurrentConversation(conversation_id);
+      setCreatingNewConversation(false);
+      conversation_creation_attempted.current = false; // Reset flag since we successfully created a conversation
+
+      const previewData = {
+        title: newConversation.name,
+        last_update_time: new Date().toISOString(),
+      };
+
+      setConversationPreviews((prev) => ({
+        ...prev,
+        [conversation_id]: previewData,
+      }));
+
+      console.log("✅ Conversation created and added to sidebar:", {
+        conversationId: conversation_id,
+        title: newConversation.name,
+        previewData,
+        totalConversations: conversations.length + 1,
+      });
+      if (currentPage === "chat") {
+        changePage("chat", { conversation: conversation_id }, true);
+      }
+      return newConversation;
+    } catch (error) {
+      console.error("❌ Failed to create conversation in backend:", error);
       setCreatingNewConversation(false);
       return null;
     }
-
-    const newConversation: Conversation = {
-      ...initialConversation,
-      id: conversation_id,
-      timestamp: new Date(),
-      tree: [tree.tree],
-      base_tree: tree.tree,
-      enabled_collections: collections.reduce(
-        (acc, c) => ({ ...acc, [c.name]: true }),
-        {}
-      ),
-    };
-    setConversations([...(conversations || []), newConversation]);
-    setCurrentConversation(conversation_id);
-    setCreatingNewConversation(false);
-    setConversationPreviews((prev) => ({
-      ...prev,
-      [conversation_id]: {
-        title: newConversation.name,
-        last_update_time: new Date().toISOString(),
-      },
-    }));
-    if (currentPage === "chat") {
-      changePage("chat", { conversation: conversation_id }, true);
-    }
-    return newConversation;
   };
 
   const removeConversation = (conversation_id: string) => {
@@ -408,7 +457,9 @@ export const ConversationProvider = ({
             );
             return c;
           }
-          return {
+
+          // Update conversation with new messages
+          const updatedConversation = {
             ...c,
             initialized: true,
             queries: {
@@ -419,6 +470,8 @@ export const ConversationProvider = ({
               },
             },
           };
+
+          return updatedConversation;
         }
         return c;
       })
@@ -837,11 +890,18 @@ export const ConversationProvider = ({
   };
 
   const startNewConversation = async () => {
-    if (id) {
-      const newConversation = await addConversation(id);
+    if (id && !creatingNewConversation) {
+      console.log("🚀 Starting new conversation...");
+      const newConversation = await addConversation(id); // No title - will use default "New Conversation"
       if (newConversation) {
         setCurrentConversation(newConversation.id);
+        console.log(
+          "✅ New conversation created and set as current:",
+          newConversation.id
+        );
       }
+    } else if (creatingNewConversation) {
+      console.log("⏳ Already creating a conversation, skipping...");
     }
   };
 

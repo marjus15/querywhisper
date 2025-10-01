@@ -116,28 +116,26 @@ export default function ChatPage() {
     console.log("ChatPage - found conversation:", _conversation);
 
     if (_conversation === null || _conversation === undefined) {
-      console.log("ChatPage - No conversation found, creating a simple one...");
-      // Create a simple conversation without API calls
-      const conversation_id = uuidv4();
-      const simpleConversation = {
-        id: conversation_id,
-        name: "New Conversation",
-        queries: {},
-        current: "",
-        tree: [],
-        base_tree: null,
-        initialized: true,
-        error: false,
-        enabled_collections: {},
-        tree_updates: [],
-        timestamp: new Date(),
-      };
+      console.log(
+        "ChatPage - No conversation found, creating one with the question as title..."
+      );
+      // Create a new conversation with the question as the title
+      const newTitle =
+        trimmedQuery.length > 50
+          ? trimmedQuery.substring(0, 50) + "..."
+          : trimmedQuery;
 
-      // Add to conversations list
-      setConversations((prev) => [...prev, simpleConversation]);
-      setCurrentConversation(conversation_id);
-      _conversation = simpleConversation;
-      console.log("ChatPage - Created simple conversation:", conversation_id);
+      const newConversation = await addConversation(id || "", newTitle);
+      if (newConversation) {
+        _conversation = newConversation;
+        console.log(
+          "ChatPage - Created new conversation with title:",
+          newTitle
+        );
+      } else {
+        console.error("ChatPage - Failed to create conversation");
+        return;
+      }
     }
 
     if (_conversation) {
@@ -336,6 +334,10 @@ export default function ChatPage() {
               handleSendQuery={handleSendQuery}
               addDisplacement={addDisplacement}
               addDistortion={addDistortion}
+              selectSettings={() => {
+                // TODO: Implement settings functionality
+                console.log("Settings button clicked");
+              }}
             />
           </div>
           {Object.keys(currentQuery).length === 0 && (

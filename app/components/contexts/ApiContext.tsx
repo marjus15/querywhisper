@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { host } from "../host";
+import { apiClient } from "@/lib/api-client";
 
 export interface AskRequest {
   question: string;
@@ -44,25 +45,15 @@ export const ApiProvider = ({ children }: { children: React.ReactNode }) => {
         session_id: providedSessionId || sessionId,
       };
 
-      console.log("ApiContext - Making fetch request to:", `${host}/ask`);
+      console.log("ApiContext - Making authenticated request to:", `/ask`);
       console.log("ApiContext - Request body:", JSON.stringify(request));
 
-      const response = await fetch(`${host}/ask`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer demo-token", // Using demo token as per backend auth
-        },
-        body: JSON.stringify(request),
-      });
+      const data: AskResponse = await apiClient.post<AskResponse>(
+        "/ask",
+        request
+      );
 
-      console.log("ApiContext - Fetch response status:", response.status);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: AskResponse = await response.json();
+      console.log("ApiContext - Response received:", data);
 
       // Store session ID for future requests
       if (data.session_id) {
@@ -83,11 +74,7 @@ export const ApiProvider = ({ children }: { children: React.ReactNode }) => {
 
   const testConnection = async (): Promise<boolean> => {
     try {
-      const response = await fetch(`${host}/test`);
-      if (!response.ok) {
-        return false;
-      }
-      const data = await response.json();
+      const data = await apiClient.get("/test");
       return data.status === "success";
     } catch (error) {
       console.error("Error testing connection:", error);

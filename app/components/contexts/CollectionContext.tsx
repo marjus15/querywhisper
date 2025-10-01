@@ -49,7 +49,15 @@ export const CollectionProvider = ({
     if (!idRef.current) return;
     setCollections([]);
     setLoadingCollections(true);
-    const collections: Collection[] = await getCollections(idRef.current);
+
+    // TODO: Commented out to avoid 404 error - endpoint not implemented
+    // const collections: Collection[] = await getCollections(idRef.current);
+    // setCollections(collections);
+    // setLoadingCollections(false);
+    // showSuccessToast(`${collections.length} Collections Loaded`);
+
+    // Mock empty collections for now
+    const collections: Collection[] = [];
     setCollections(collections);
     setLoadingCollections(false);
     showSuccessToast(`${collections.length} Collections Loaded`);

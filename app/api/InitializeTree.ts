@@ -8,67 +8,34 @@ export async function initializeTree(
   low_memory: boolean = false
 ): Promise<DecisionTreePayload> {
   const startTime = performance.now();
-  try {
-    const response = await fetch(
-      `${host}/init/tree/${user_id}/${conversation_id}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          low_memory: low_memory,
-        }),
-      }
+  
+  // TODO: Backend /init/tree endpoint is not implemented yet
+  // For now, return a mock tree to allow conversation creation
+  console.log("⚠️ Using mock tree - /init/tree endpoint not implemented in backend");
+  
+  const mockTree: DecisionTreeNode = {
+    id: "root",
+    name: "Root",
+    description: "Root decision node",
+    instruction: "Start your conversation",
+    reasoning: "This is a mock tree for development",
+    branch: false,
+    options: {},
+    choosen: true,
+    blocked: false,
+  };
+
+  const mockData: DecisionTreePayload = {
+    conversation_id: conversation_id,
+    tree: mockTree,
+    error: null,
+  };
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `init/tree took ${(performance.now() - startTime).toFixed(2)}ms (mock)`
     );
-
-    if (!response.ok) {
-      console.error(
-        `Initializing tree failed! status: ${response.status}, error: ${response.statusText}`
-      );
-      return {
-        conversation_id: conversation_id,
-        error: "Failed to initialize tree",
-        tree: null,
-      };
-    }
-
-    const data: DecisionTreePayload = await response.json();
-
-    if (data.tree == null) {
-      return {
-        conversation_id: conversation_id,
-        error: "Failed to initialize tree",
-        tree: null,
-      };
-    }
-
-    const resetChoosenBlocked = (node: DecisionTreeNode) => {
-      node.choosen = false;
-      node.blocked = false;
-
-      if (node.options) {
-        Object.values(node.options).forEach((option) => {
-          resetChoosenBlocked(option);
-        });
-      }
-    };
-    resetChoosenBlocked(data.tree);
-    data.tree.choosen = true;
-
-    return data;
-  } catch (err) {
-    console.error(err instanceof Error ? err.message : String(err));
-    return {
-      conversation_id: conversation_id,
-      error: "Failed to initialize tree",
-      tree: null,
-    };
-  } finally {
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `init/tree took ${(performance.now() - startTime).toFixed(2)}ms`
-      );
-    }
   }
+
+  return mockData;
 }
