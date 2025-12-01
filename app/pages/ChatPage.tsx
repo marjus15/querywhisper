@@ -77,6 +77,17 @@ export default function ChatPage() {
   );
   const [currentTrees, setCurrentTrees] = useState<DecisionTreeNode[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Clear query state immediately when conversation changes to null or different conversation
+  useEffect(() => {
+    if (!currentConversation) {
+      console.log("🧹 Clearing currentQuery - no conversation selected");
+      setCurrentQuery({});
+      setCurrentStatus("");
+      setCurrentTrees([]);
+      setCurrentTitle("");
+    }
+  }, [currentConversation]);
 
   const displacementStrength = useRef(0.0);
   const distortionStrength = useRef(0.0);
@@ -158,26 +169,37 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    setCurrentQuery(
-      currentConversation && conversations.length > 0
-        ? conversations.find((c) => c.id === currentConversation)?.queries || {}
-        : {}
-    );
-    setCurrentStatus(
-      currentConversation && conversations.length > 0
-        ? conversations.find((c) => c.id === currentConversation)?.current || ""
-        : ""
-    );
-    setCurrentTrees(
-      currentConversation && conversations.length > 0
-        ? conversations.find((c) => c.id === currentConversation)?.tree || []
-        : []
-    );
-    setCurrentTitle(
-      currentConversation && conversations.length > 0
-        ? conversations.find((c) => c.id === currentConversation)?.name || ""
-        : ""
-    );
+    // When conversation changes, clear and load the new conversation's data
+    console.log("🔄 ChatPage useEffect - currentConversation:", currentConversation, "conversations length:", conversations.length);
+    
+    if (currentConversation && conversations.length > 0) {
+      const conversation = conversations.find((c) => c.id === currentConversation);
+      console.log("🔍 Found conversation:", conversation?.id, "queries count:", Object.keys(conversation?.queries || {}).length);
+      
+      if (conversation) {
+        // Ensure we use empty queries if conversation has no queries yet
+        const queries = conversation.queries || {};
+        console.log("📋 Setting currentQuery with", Object.keys(queries).length, "queries");
+        setCurrentQuery(queries);
+        setCurrentStatus(conversation.current || "");
+        setCurrentTrees(conversation.tree || []);
+        setCurrentTitle(conversation.name || "");
+      } else {
+        // Conversation not found in loaded conversations - clear everything
+        console.log("⚠️ Conversation not found, clearing state");
+        setCurrentQuery({});
+        setCurrentStatus("");
+        setCurrentTrees([]);
+        setCurrentTitle("");
+      }
+    } else {
+      // No conversation selected - clear everything
+      console.log("🧹 No conversation selected, clearing state");
+      setCurrentQuery({});
+      setCurrentStatus("");
+      setCurrentTrees([]);
+      setCurrentTitle("");
+    }
   }, [currentConversation, conversations]);
 
   useEffect(() => {

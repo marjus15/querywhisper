@@ -99,9 +99,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         );
       }
 
-      // Use the backend /ask endpoint
-      console.log("SocketContext - About to call askQuestion with:", query);
-      const response = await askQuestion(query);
+      // Use the backend /ask endpoint with the current conversation's session ID
+      console.log("SocketContext - About to call askQuestion with:", query, "session:", conversation_id);
+      const response = await askQuestion(query, conversation_id);
       console.log("SocketContext - Received response:", response);
 
       if (response.success) {

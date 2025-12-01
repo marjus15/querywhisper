@@ -32,6 +32,7 @@ import { loadConversation } from "@/app/api/loadConversation";
 import { initializeTree } from "@/app/api/InitializeTree";
 import { getSuggestions } from "@/app/api/getSuggestions";
 import { deleteConversation } from "@/app/api/deleteConversation";
+import { renameConversation } from "@/app/api/renameConversation";
 import { addFeedback } from "@/app/api/addFeedback";
 import { deleteFeedback } from "@/app/api/deleteFeedback";
 import { startConversation } from "@/app/api/startConversation";
@@ -48,9 +49,11 @@ export const ConversationContext = createContext<{
   loadingConversations: boolean;
   addConversation: (
     user_id: string,
-    title?: string
+    title?: string,
+    forceNew?: boolean
   ) => Promise<Conversation | null>;
-  removeConversation: (conversation_id: string) => void;
+  removeConversation: (conversation_id: string) => Promise<void>;
+  renameConversation: (conversation_id: string, newTitle: string) => Promise<void>;
   selectConversation: (id: string) => void;
   setConversationStatus: (status: string, conversationId: string) => void;
   handleConversationError: (conversationId: string) => void;
@@ -112,7 +115,8 @@ export const ConversationContext = createContext<{
   startNewConversation: () => {},
   conversationPreviews: {},
   addConversation: () => Promise.resolve(null),
-  removeConversation: () => {},
+  removeConversation: () => Promise.resolve(),
+  renameConversation: () => Promise.resolve(),
   selectConversation: () => {},
   setConversationStatus: () => {},
   setAllConversationStatuses: () => {},
@@ -180,21 +184,37 @@ export const ConversationProvider = ({
       console.log("🔄 Loading conversations from database for user:", id);
       const data: SavedConversationPayload = await loadConversations(id || "");
 
-      let hasConversations = false;
+      // Build new previews from database
+      const dbPreviews: { [key: string]: SavedTreeData } = {};
+      
       if (data.trees && Object.keys(data.trees).length > 0) {
         for (const [key, value] of Object.entries(data.trees)) {
           if (value && value.title && value.last_update_time) {
-            setConversationPreviews((prev) => ({ ...prev, [key]: value }));
-            hasConversations = true;
+            dbPreviews[key] = value;
           }
         }
         console.log(
-          `✅ Loaded ${Object.keys(data.trees).length} conversations from database`
+          `✅ Loaded ${Object.keys(dbPreviews).length} conversations from database`
         );
       } else {
         console.log("ℹ️ No conversations found in database");
       }
 
+      // Always merge with existing local conversations to preserve any that aren't in DB yet
+      setConversationPreviews((prev) => {
+        // Start with database conversations
+        const merged = { ...dbPreviews };
+        // Add any local conversations that aren't in the database
+        // This preserves newly created conversations that haven't been synced yet
+        for (const [key, value] of Object.entries(prev)) {
+          if (!merged[key] && value) {
+            console.log(`📋 Preserving local conversation: ${key}`);
+            merged[key] = value;
+          }
+        }
+        console.log(`📊 Total conversations after merge: ${Object.keys(merged).length}`);
+        return merged;
+      });
       setLoadingConversations(false);
 
       // No automatic conversation creation - conversations are created only when user explicitly starts them
@@ -293,7 +313,8 @@ export const ConversationProvider = ({
 
   const addConversation = async (
     user_id: string,
-    title?: string
+    title?: string,
+    forceNew: boolean = false
   ): Promise<Conversation | null> => {
     if (!user_id?.trim()) {
       return null;
@@ -305,7 +326,8 @@ export const ConversationProvider = ({
 
     try {
       // First, create the conversation session in the backend
-      const backendResponse = await startConversation();
+      // Pass force_new: true when explicitly creating a new conversation (plus button)
+      const backendResponse = await startConversation({ force_new: forceNew });
       const conversation_id = backendResponse.session_id;
 
       console.log("✅ Backend conversation created:", conversation_id);
@@ -330,12 +352,23 @@ export const ConversationProvider = ({
           (acc, c) => ({ ...acc, [c.name]: true }),
           {}
         ),
+        queries: {}, // Ensure queries start empty for new conversation
+        initialized: true,
+        current: "", // Ensure status is empty
       };
-      setConversations([...(conversations || []), newConversation]);
+      // Preserve existing conversations - use functional update to ensure we have latest state
+      setConversations((prevConversations) => {
+        // Remove any existing conversation with the same ID (shouldn't happen, but safety check)
+        const filtered = (prevConversations || []).filter(c => c.id !== conversation_id);
+        return [...filtered, newConversation];
+      });
+      // Set current conversation after adding to array to ensure useEffect finds it
       setCurrentConversation(conversation_id);
       setCreatingNewConversation(false);
       conversation_creation_attempted.current = false; // Reset flag since we successfully created a conversation
 
+      // Add to previews immediately so user can see the new conversation
+      // Title will be updated when first query is submitted
       const previewData = {
         title: newConversation.name,
         last_update_time: new Date().toISOString(),
@@ -363,14 +396,121 @@ export const ConversationProvider = ({
     }
   };
 
-  const removeConversation = (conversation_id: string) => {
-    if (currentConversation === conversation_id) {
-      setCurrentConversation(null);
+  const removeConversation = async (conversation_id: string) => {
+    try {
+      // Optimistically remove from UI immediately
+      if (currentConversation === conversation_id) {
+        setCurrentConversation(null);
+      }
+      
+      // Remove from local state immediately for better UX
+      setConversationPreviews((prev) => {
+        const updated = { ...prev };
+        delete updated[conversation_id];
+        return updated;
+      });
+      
+      // Remove from conversations array if it exists
+      setConversations((prev) => prev.filter((c) => c.id !== conversation_id));
+      
+      // Delete from backend
+      const result = await deleteConversation(id || "", conversation_id);
+      
+      // Check if there was an error
+      if (result.error) {
+        console.error("❌ Failed to delete conversation:", result.error);
+        // Reload conversations to restore the deleted one if delete failed
+        await loadConversationsFromDB();
+        return;
+      }
+      
+      console.log("✅ Conversation deleted successfully:", conversation_id);
+      
+      // Reload conversations from DB to ensure consistency
+      await loadConversationsFromDB();
+    } catch (error) {
+      console.error("❌ Error deleting conversation:", error);
+      // Reload conversations to restore state if something went wrong
+      await loadConversationsFromDB();
     }
-    setConversations([]);
-    setConversationPreviews({});
-    deleteConversation(id || "", conversation_id);
-    loadConversationsFromDB();
+  };
+
+  const renameConversationHandler = async (conversation_id: string, newTitle: string) => {
+    try {
+      if (!newTitle || !newTitle.trim()) {
+        console.error("❌ Cannot rename conversation: title cannot be empty");
+        return;
+      }
+
+      const trimmedTitle = newTitle.trim();
+      const originalTitle = conversationPreviews[conversation_id]?.title || "";
+      
+      // Optimistically update UI immediately
+      setConversationPreviews((prev) => {
+        if (prev[conversation_id]) {
+          return {
+            ...prev,
+            [conversation_id]: {
+              ...prev[conversation_id],
+              title: trimmedTitle,
+            },
+          };
+        }
+        return prev;
+      });
+
+      // Update in conversations array if it exists
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversation_id ? { ...c, name: trimmedTitle } : c
+        )
+      );
+
+      // Update in backend
+      const result = await renameConversation(id || "", conversation_id, trimmedTitle);
+
+      // Check if there was an error
+      if (result.error) {
+        console.error("❌ Failed to rename conversation:", result.error);
+        // Restore original title in UI
+        setConversationPreviews((prev) => {
+          if (prev[conversation_id]) {
+            return {
+              ...prev,
+              [conversation_id]: {
+                ...prev[conversation_id],
+                title: originalTitle,
+              },
+            };
+          }
+          return prev;
+        });
+        // Reload conversations to ensure consistency
+        await loadConversationsFromDB();
+        return;
+      }
+
+      console.log("✅ Conversation renamed successfully:", conversation_id, "to:", trimmedTitle);
+      // Don't reload on success - we already updated optimistically and it causes unnecessary re-renders
+    } catch (error) {
+      console.error("❌ Error renaming conversation:", error);
+      // Restore original title in UI
+      const originalTitle = conversationPreviews[conversation_id]?.title || "";
+      setConversationPreviews((prev) => {
+        if (prev[conversation_id]) {
+          return {
+            ...prev,
+            [conversation_id]: {
+              ...prev[conversation_id],
+              title: originalTitle,
+            },
+          };
+        }
+        return prev;
+      });
+      // Reload conversations to restore state if something went wrong
+      await loadConversationsFromDB();
+    }
   };
 
   const selectConversation = (id: string) => {
@@ -714,7 +854,33 @@ export const ConversationProvider = ({
           prevConversations
         );
         if (c.id === conversationId) {
-          return { ...c, queries: { ...c.queries, [query_id]: newQuery } };
+          const updatedConversation = { ...c, queries: { ...c.queries, [query_id]: newQuery } };
+          
+          // If this is the first query and conversation still has default title, update it
+          const isFirstQuery = Object.keys(c.queries).length === 0;
+          const hasDefaultTitle = c.name === "New Conversation" || c.name === initialConversation.name;
+          
+          if (isFirstQuery && hasDefaultTitle) {
+            // Use the query text as the title (truncated to 50 chars)
+            const newTitle = query.length > 50 ? query.substring(0, 50) + "..." : query;
+            updatedConversation.name = newTitle;
+            
+            // Update conversation previews to show it in the sidebar
+            setConversationPreviews((prev) => ({
+              ...prev,
+              [conversationId]: {
+                title: newTitle,
+                last_update_time: new Date().toISOString(),
+              },
+            }));
+            
+            console.log("✅ Updated conversation title from first query:", {
+              conversationId,
+              newTitle,
+            });
+          }
+          
+          return updatedConversation;
         }
         return c;
       })
@@ -892,13 +1058,26 @@ export const ConversationProvider = ({
   const startNewConversation = async () => {
     if (id && !creatingNewConversation) {
       console.log("🚀 Starting new conversation...");
-      const newConversation = await addConversation(id); // No title - will use default "New Conversation"
+      // Clear current conversation first to ensure clean state
+      // This will trigger ChatPage to clear old messages immediately
+      setCurrentConversation(null);
+      
+      // Small delay to ensure state clears before creating new conversation
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Force new = true to always create a new conversation when clicking + button
+      const newConversation = await addConversation(id, undefined, true);
       if (newConversation) {
-        setCurrentConversation(newConversation.id);
         console.log(
           "✅ New conversation created and set as current:",
-          newConversation.id
+          newConversation.id,
+          "queries count:",
+          Object.keys(newConversation.queries || {}).length
         );
+        // Set the new conversation as current - this will trigger useEffect in ChatPage
+        setCurrentConversation(newConversation.id);
+        // Reload conversations - will automatically merge with local state
+        await loadConversationsFromDB();
       }
     } else if (creatingNewConversation) {
       console.log("⏳ Already creating a conversation, skipping...");
@@ -937,7 +1116,14 @@ export const ConversationProvider = ({
     loadConversationsFromDB();
   }, [fetchConversationFlag]);
 
+  // Track conversation IDs only (not titles) to avoid re-running on rename
+  const conversationIds = Object.keys(conversationPreviews).sort().join(",");
+  // Keep a ref to avoid stale closures while still using conversationIds as dependency
+  const conversationPreviewsRef = useRef(conversationPreviews);
+  conversationPreviewsRef.current = conversationPreviews;
+  
   useEffect(() => {
+    const previews = conversationPreviewsRef.current;
     const pageParam = searchParams.get("page");
     const isChatPageOrRoot =
       pathname === "/" && (pageParam === "chat" || pageParam === null);
@@ -946,7 +1132,7 @@ export const ConversationProvider = ({
       console.log("Conversation selection logic:", {
         isChatPageOrRoot,
         initial_ref: initial_ref.current,
-        conversationPreviews: Object.keys(conversationPreviews).length,
+        conversationPreviews: Object.keys(previews).length,
         id: !!id,
         currentConversation,
       });
@@ -956,7 +1142,7 @@ export const ConversationProvider = ({
       isChatPageOrRoot &&
       initial_ref.current &&
       id &&
-      Object.keys(conversationPreviews).length > 0
+      Object.keys(previews).length > 0
     ) {
       const conversationId = searchParams.get("conversation");
 
@@ -965,10 +1151,10 @@ export const ConversationProvider = ({
         if (conversationId === currentConversation) {
           return;
         }
-        if (!conversationPreviews[conversationId]) {
+        if (!previews[conversationId]) {
           // Conversation not found - select latest existing one
           const latestConversationId = Object.entries(
-            conversationPreviews
+            previews
           ).sort(
             ([, a], [, b]) =>
               new Date(b.last_update_time).getTime() -
@@ -978,19 +1164,19 @@ export const ConversationProvider = ({
           return;
         }
         const conversation = conversations.find((c) => c.id === conversationId);
-        const conversationName = conversationPreviews[conversationId].title;
+        const conversationName = previews[conversationId].title;
 
         if (!conversation) {
           retrieveConversation(
             conversationId,
             conversationName,
-            new Date(conversationPreviews[conversationId].last_update_time)
+            new Date(previews[conversationId].last_update_time)
           );
         }
         setCurrentConversation(conversationId);
       } else {
         // No conversation ID in URL - auto-select latest
-        const latestConversationId = Object.entries(conversationPreviews).sort(
+        const latestConversationId = Object.entries(previews).sort(
           ([, a], [, b]) =>
             new Date(b.last_update_time).getTime() -
             new Date(a.last_update_time).getTime()
@@ -1001,7 +1187,8 @@ export const ConversationProvider = ({
         }
       }
     }
-  }, [searchParams, pathname, conversationPreviews, id, currentConversation]);
+  // Use conversationIds instead of conversationPreviews to avoid re-running on title changes
+  }, [searchParams, pathname, conversationIds, id, currentConversation]);
 
   return (
     <ConversationContext.Provider
@@ -1012,6 +1199,7 @@ export const ConversationProvider = ({
         currentConversation,
         addConversation,
         removeConversation,
+        renameConversation: renameConversationHandler,
         selectConversation,
         setConversationStatus,
         setAllConversationStatuses,

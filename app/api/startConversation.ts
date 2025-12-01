@@ -5,13 +5,19 @@ export interface StartConversationResponse {
   message: string;
 }
 
-export async function startConversation(): Promise<StartConversationResponse> {
+export interface StartConversationOptions {
+  force_new?: boolean;
+}
+
+export async function startConversation(options: StartConversationOptions = {}): Promise<StartConversationResponse> {
   const startTime = performance.now();
   
   try {
-    console.log("🚀 Starting new conversation...");
+    console.log("🚀 Starting new conversation...", options.force_new ? "(force new)" : "");
     
-    const response = await apiClient.post<StartConversationResponse>("/conversation/start");
+    const response = await apiClient.post<StartConversationResponse>("/conversation/start", {
+      force_new: options.force_new ?? false
+    });
     
     console.log(
       `✅ Conversation started successfully: ${response.session_id}`
