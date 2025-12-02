@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   ReactFlow,
   useNodesState,
@@ -17,9 +17,16 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import { getSchemaInfo, TableInfo } from "@/app/api/getSchemaInfo";
+import { 
+  getSchemaInfo, 
+  getSchemaStatus, 
+  refreshSchemaFromBackend,
+  TableInfo, 
+  SchemaStatusResponse 
+} from "@/app/api/getSchemaInfo";
 import { motion } from "framer-motion";
-import { TbDatabase, TbKey, TbLink, TbEye, TbEyeOff } from "react-icons/tb";
+import { TbDatabase, TbKey, TbLink, TbEye, TbEyeOff, TbRefresh, TbCircleFilled } from "react-icons/tb";
+import { HiOutlineSparkles } from "react-icons/hi2";
 
 interface TableNodeData {
   tableInfo: TableInfo;
@@ -149,6 +156,11 @@ const TableNode: React.FC<{
           <span>{tableInfo.columns.length} columns</span>
           <span>{tableInfo.relationships.length} relationships</span>
         </div>
+        {tableInfo.row_count !== undefined && tableInfo.row_count > 0 && (
+          <div className="text-xs text-accent/70 mt-1">
+            ~{tableInfo.row_count.toLocaleString()} rows
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -164,10 +176,12 @@ const DatabaseSchemaVisualization: React.FC<
     TableInfo
   > | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
+  const [schemaStatus, setSchemaStatus] = useState<SchemaStatusResponse | null>(null);
 
   const nodeTypes = useMemo(
     () => ({
@@ -176,24 +190,56 @@ const DatabaseSchemaVisualization: React.FC<
     []
   );
 
-  // Fetch schema data
-  useEffect(() => {
-    const fetchSchema = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const response = await getSchemaInfo();
-        setSchemaData(response.schema);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch schema");
-        console.error("Error fetching schema:", err);
-      } finally {
-        setLoading(false);
+  // Fetch schema data and status
+  const fetchSchema = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch both schema and status in parallel
+      const [schemaResponse, statusResponse] = await Promise.all([
+        getSchemaInfo(),
+        getSchemaStatus().catch(() => null) // Status is optional
+      ]);
+      
+      setSchemaData(schemaResponse.schema);
+      if (statusResponse) {
+        setSchemaStatus(statusResponse);
       }
-    };
-
-    fetchSchema();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch schema");
+      console.error("Error fetching schema:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Refresh schema from backend (triggers database introspection)
+  const handleRefreshSchema = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      setError(null);
+      
+      // Try to refresh the backend schema first
+      try {
+        await refreshSchemaFromBackend();
+      } catch (refreshErr) {
+        console.warn("Could not trigger backend refresh, fetching current schema:", refreshErr);
+      }
+      
+      // Then fetch the updated schema
+      await fetchSchema();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh schema");
+      console.error("Error refreshing schema:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchSchema]);
+
+  useEffect(() => {
+    fetchSchema();
+  }, [fetchSchema]);
 
   // Create nodes and edges from schema data
   useEffect(() => {
@@ -352,7 +398,8 @@ const DatabaseSchemaVisualization: React.FC<
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto mb-4"></div>
-          <p className="text-primary">Loading database schema...</p>
+          <p className="text-primary">Detecting database schema...</p>
+          <p className="text-foreground/50 text-sm mt-1">Auto-detecting tables and relationships</p>
         </div>
       </div>
     );
@@ -377,31 +424,85 @@ const DatabaseSchemaVisualization: React.FC<
     );
   }
 
+  const isDynamic = schemaStatus?.mode === "dynamic";
+  const tableCount = Object.keys(schemaData).length;
+
   return (
-    <div className={`w-full h-full ${className}`}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        connectionLineType={ConnectionLineType.SmoothStep}
-        fitView
-        onInit={setReactFlowInstance}
-        className="bg-background"
-        defaultEdgeOptions={{
-          type: "smoothstep",
-          style: { strokeWidth: 3 },
-        }}
-      >
-        <Background gap={20} size={1} color="hsl(var(--foreground) / 0.1)" />
-        <Controls className="bg-background border border-foreground/20" />
-        <MiniMap
-          className="bg-background border border-foreground/20"
-          nodeColor="hsl(var(--accent))"
-          maskColor="hsl(var(--background) / 0.8)"
-        />
-      </ReactFlow>
+    <div className={`w-full h-full flex flex-col ${className}`}>
+      {/* Schema Status Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-foreground/10 bg-background/80 backdrop-blur-sm z-10">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <TbDatabase className="text-accent" size={20} />
+            <span className="font-semibold text-primary">Database Schema</span>
+          </div>
+          
+          {/* Schema Mode Badge */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+            isDynamic 
+              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+              : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+          }`}>
+            {isDynamic ? (
+              <>
+                <HiOutlineSparkles size={12} />
+                <span>Auto-Detected</span>
+              </>
+            ) : (
+              <>
+                <TbCircleFilled size={8} />
+                <span>Static</span>
+              </>
+            )}
+          </div>
+          
+          {/* Table Count */}
+          <div className="text-sm text-foreground/60">
+            {tableCount} tables
+          </div>
+        </div>
+        
+        {/* Refresh Button */}
+        <button
+          onClick={handleRefreshSchema}
+          disabled={refreshing}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+            refreshing 
+              ? "bg-foreground/10 text-foreground/40 cursor-not-allowed" 
+              : "bg-accent/20 text-accent hover:bg-accent/30 border border-accent/30"
+          }`}
+        >
+          <TbRefresh size={16} className={refreshing ? "animate-spin" : ""} />
+          <span>{refreshing ? "Refreshing..." : "Refresh Schema"}</span>
+        </button>
+      </div>
+      
+      {/* ReactFlow Canvas */}
+      <div className="flex-1 relative">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          connectionLineType={ConnectionLineType.SmoothStep}
+          fitView
+          onInit={setReactFlowInstance}
+          className="bg-background"
+          defaultEdgeOptions={{
+            type: "smoothstep",
+            style: { strokeWidth: 3 },
+          }}
+        >
+          <Background gap={20} size={1} color="hsl(var(--foreground) / 0.1)" />
+          <Controls className="bg-background border border-foreground/20" />
+          <MiniMap
+            className="bg-background border border-foreground/20"
+            nodeColor="hsl(var(--accent))"
+            maskColor="hsl(var(--background) / 0.8)"
+          />
+        </ReactFlow>
+      </div>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { ResultPayload } from "@/app/types/chat";
 import { Button } from "@/components/ui/button";
 import DisplayIcon from "./DisplayIcon";
 import { FaCode } from "react-icons/fa6";
+import { IoBarChart } from "react-icons/io5";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
@@ -12,19 +13,31 @@ interface CodeDisplayProps {
   merged?: boolean;
   payload: ResultPayload[];
   handleViewChange: (
-    view: "chat" | "code" | "result",
+    view: "chat" | "code" | "result" | "chart",
     payload: ResultPayload[] | null
   ) => void;
+  showChartButton?: boolean;
 }
 
 const CodeDisplay: React.FC<CodeDisplayProps> = ({
   payload,
   merged,
   handleViewChange,
+  showChartButton = true,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isCodeHovered, setIsCodeHovered] = useState(false);
+  const [isChartHovered, setIsChartHovered] = useState(false);
 
   if (!payload) return null;
+
+  // Check if data is suitable for chart visualization (has numeric columns)
+  const canShowChart = payload.some((p) => {
+    if (!p.objects || !Array.isArray(p.objects) || p.objects.length < 2) return false;
+    // Check if there's at least one numeric value in the first object
+    const firstObj = p.objects[0];
+    if (typeof firstObj !== 'object' || firstObj === null) return false;
+    return Object.values(firstObj).some(val => typeof val === 'number');
+  });
 
   return (
     <motion.div
@@ -51,12 +64,14 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
         >
           <DisplayIcon payload={payload} />
         </motion.div>
+        
+        {/* Code Button */}
         <motion.div
-          onHoverStart={() => setIsHovered(true)}
-          onHoverEnd={() => setIsHovered(false)}
+          onHoverStart={() => setIsCodeHovered(true)}
+          onHoverEnd={() => setIsCodeHovered(false)}
           initial={{ width: "2rem", y: 15, opacity: 0 }}
           animate={{
-            width: isHovered ? "auto" : "2rem",
+            width: isCodeHovered ? "auto" : "2rem",
             y: 0,
             opacity: 1,
           }}
@@ -76,7 +91,7 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
           >
             <FaCode size={12} className="text-highlight flex-shrink-0" />
             <AnimatePresence>
-              {isHovered && (
+              {isCodeHovered && (
                 <motion.span
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -90,6 +105,50 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
             </AnimatePresence>
           </Button>
         </motion.div>
+
+        {/* Chart Button - only show if data can be visualized */}
+        {showChartButton && canShowChart && (
+          <motion.div
+            onHoverStart={() => setIsChartHovered(true)}
+            onHoverEnd={() => setIsChartHovered(false)}
+            initial={{ width: "2rem", y: 15, opacity: 0 }}
+            animate={{
+              width: isChartHovered ? "auto" : "2rem",
+              y: 0,
+              opacity: 1,
+            }}
+            transition={{
+              width: { duration: 0.3, ease: "easeInOut" },
+              y: { type: "spring", stiffness: 300, damping: 20, delay: 0.35 },
+              opacity: { duration: 0.2, delay: 0.35 },
+            }}
+            className="overflow-hidden"
+          >
+            <Button
+              variant={"default"}
+              className="bg-accent/10 hover:bg-accent/20 h-8 rounded-md flex items-center gap-2 px-2 whitespace-nowrap"
+              onClick={() => {
+                handleViewChange("chart", payload);
+              }}
+            >
+              <IoBarChart size={12} className="text-accent flex-shrink-0" />
+              <AnimatePresence>
+                {isChartHovered && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, delay: 0.1 }}
+                    className="text-accent text-xs"
+                  >
+                    Chart
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
+        )}
+
         {!merged && (
           <motion.div
             className="text-primary text-sm flex items-center justify-center rounded-md"

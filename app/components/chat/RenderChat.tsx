@@ -33,6 +33,7 @@ import RenderDisplayView from "./RenderDisplayView";
 import CitationDisplay from "./displays/Summary/CitationDisplay";
 import { ChatContext } from "../contexts/ChatContext";
 import CodeView from "./displays/QueryCode/CodeView";
+import ChartView from "./displays/ChartTable/ChartView";
 import { DisplayProvider } from "../contexts/DisplayContext";
 import SelfHealingErrorDisplay from "./displays/SystemMessages/SelfHealingErrorDisplay";
 
@@ -488,6 +489,14 @@ const RenderChat: React.FC<RenderChatProps> = ({
           <RenderDisplayView
             payload={currentResultPayload}
             type={currentResultType}
+            handleViewChange={handleViewChange}
+          />
+        </div>
+      )}
+      {currentView === "chart" && (
+        <div className="w-full flex flex-col gap-4">
+          <ChartView
+            payload={currentPayload as ResultPayload[]}
             handleViewChange={handleViewChange}
           />
         </div>

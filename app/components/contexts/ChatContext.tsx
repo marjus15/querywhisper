@@ -7,13 +7,13 @@ import { CitationPreview } from "@/app/types/displays";
 export const ChatContext = createContext<{
   getCitationPreview: (id: string) => CitationPreview | null;
   buildRefMap: (messages: Message[]) => void;
-  currentView: "chat" | "code" | "result";
+  currentView: "chat" | "code" | "result" | "chart";
   currentPayload: ResultPayload[] | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   currentResultPayload: any | null;
   currentResultType: string;
   handleViewChange: (
-    view: "chat" | "code" | "result",
+    view: "chat" | "code" | "result" | "chart",
     payload: ResultPayload[] | null
   ) => void;
   handleResultPayloadChange: (
@@ -67,7 +67,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     setRefMap(new_ref_map);
   };
 
-  const [currentView, setCurrentView] = useState<"chat" | "code" | "result">(
+  const [currentView, setCurrentView] = useState<"chat" | "code" | "result" | "chart">(
     "chat"
   );
   const [currentPayload, setCurrentPayload] = useState<ResultPayload[] | null>(
@@ -81,7 +81,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentCollectionName, setCurrentCollectionName] =
     useState<string>("");
   const handleViewChange = (
-    view: "chat" | "code" | "result",
+    view: "chat" | "code" | "result" | "chart",
     payload: ResultPayload[] | null
   ) => {
     setCurrentView(view);

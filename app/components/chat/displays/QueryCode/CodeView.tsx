@@ -15,7 +15,7 @@ interface CodeDisplayProps {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   payload: ResultPayload[];
   handleViewChange: (
-    view: "chat" | "code" | "result",
+    view: "chat" | "code" | "result" | "chart",
     payload: ResultPayload[] | null
   ) => void;
 }

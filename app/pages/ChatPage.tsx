@@ -14,16 +14,13 @@ import { BsChatFill } from "react-icons/bs";
 import { RiFlowChart } from "react-icons/ri";
 import FlowDisplay from "../components/chat/FlowDisplay";
 import { ReactFlowProvider } from "@xyflow/react";
-import { CgDebug } from "react-icons/cg";
 import { TbDatabase } from "react-icons/tb";
-import DebugView from "../components/debugging/debug";
-import DatabaseSchemaVisualization from "../components/explorer/DatabaseSchemaVisualization";
 import { SocketContext } from "../components/contexts/SocketContext";
 import { SessionContext } from "../components/contexts/SessionContext";
 import { ConversationContext } from "../components/contexts/ConversationContext";
 import { ChatProvider } from "../components/contexts/ChatContext";
+import { RouterContext } from "../components/contexts/RouterContext";
 import { v4 as uuidv4 } from "uuid";
-import { useDebug } from "../components/debugging/useDebug";
 import RateLimitDialog from "../components/navigation/RateLimitDialog";
 import { IoRefresh } from "react-icons/io5";
 
@@ -62,19 +59,16 @@ export default function ChatPage() {
     loadingConversation,
     addConversation,
   } = useContext(ConversationContext);
+  const { changePage } = useContext(RouterContext);
 
   const { getRandomPrompts, collections } = useContext(CollectionContext);
-
-  const { fetchDebug } = useDebug(id || "");
 
   const [currentQuery, setCurrentQuery] = useState<{
     [key: string]: Query;
   }>({});
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const [currentStatus, setCurrentStatus] = useState<string>("");
-  const [mode, setMode] = useState<"chat" | "flow" | "debug" | "schema">(
-    "chat"
-  );
+  const [mode, setMode] = useState<"chat" | "flow">("chat");
   const [currentTrees, setCurrentTrees] = useState<DecisionTreeNode[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -265,16 +259,6 @@ export default function ChatPage() {
                     <RiFlowChart size={14} className="text-accent" />
                     <p className="text-accent">Tree</p>
                   </>
-                ) : mode === "debug" ? (
-                  <>
-                    <CgDebug size={14} className="text-accent" />
-                    <p className="text-accent">Debug</p>
-                  </>
-                ) : mode === "schema" ? (
-                  <>
-                    <TbDatabase size={14} className="text-accent" />
-                    <p className="text-accent">Schema</p>
-                  </>
                 ) : null}
                 <LuChevronDown size={14} className="text-accent" />
               </Button>
@@ -284,20 +268,10 @@ export default function ChatPage() {
                 <BsChatFill size={14} />
                 Chat
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setMode("flow")}>
-                <RiFlowChart size={14} />
-                Tree
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setMode("schema")}>
+              <DropdownMenuItem onClick={() => changePage("data", {}, false, false)}>
                 <TbDatabase size={14} />
                 Schema
               </DropdownMenuItem>
-              {process.env.NODE_ENV === "development" && (
-                <DropdownMenuItem onClick={() => setMode("debug")}>
-                  <CgDebug size={14} />
-                  Debug
-                </DropdownMenuItem>
-              )}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
@@ -476,16 +450,6 @@ export default function ChatPage() {
       ) : mode === "flow" ? (
         <ReactFlowProvider>
           <FlowDisplay currentTrees={currentTrees} />
-        </ReactFlowProvider>
-      ) : mode === "debug" ? (
-        <DebugView
-          fetchDebug={fetchDebug}
-          currentConversation={currentConversation || ""}
-          conversations={conversations}
-        />
-      ) : mode === "schema" ? (
-        <ReactFlowProvider>
-          <DatabaseSchemaVisualization className="h-[calc(100vh-120px)]" />
         </ReactFlowProvider>
       ) : null}
       {showRateLimitDialog && <RateLimitDialog />}
