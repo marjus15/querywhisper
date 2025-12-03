@@ -93,6 +93,31 @@ const RenderChat: React.FC<RenderChatProps> = ({
     return _messages.filter((message) => message.type !== "training_update");
   };
 
+  // Helper function to check if a result payload is SQL metadata (should not be displayed as a table)
+  const isSqlMetadataPayload = (payload: ResultPayload): boolean => {
+    if (
+      !payload.objects ||
+      !Array.isArray(payload.objects) ||
+      payload.objects.length === 0
+    ) {
+      return false;
+    }
+    const firstObject = payload.objects[0];
+    if (typeof firstObject !== "object" || firstObject === null) {
+      return false;
+    }
+    const keys = Object.keys(firstObject);
+    // Check if this looks like SQL metadata (has "sql" and "execution_success" columns)
+    return keys.includes("sql") && keys.includes("execution_success");
+  };
+
+  // Helper function to extract SQL from metadata payload
+  const extractSqlFromMetadata = (payload: ResultPayload): string | null => {
+    if (!isSqlMetadataPayload(payload)) return null;
+    const firstObject = payload.objects[0] as { sql?: string };
+    return firstObject?.sql || null;
+  };
+
   useEffect(() => {
     const filtered_messages = filterMessages(messages);
     setDisplayMessages(filtered_messages);
@@ -118,9 +143,23 @@ const RenderChat: React.FC<RenderChatProps> = ({
       (m) => m.type !== "User" && m.type !== "suggestion"
     );
 
+    // Track SQL from metadata payloads to inject into data result payloads
+    let pendingSql: string | null = null;
+
     let i = 0;
     while (i < messagesToProcess.length) {
       const currentMessage = messagesToProcess[i];
+
+      // Check if this is a SQL metadata payload - extract SQL and skip displaying it
+      if (currentMessage.type === "result") {
+        const payload = currentMessage.payload as ResultPayload;
+        const extractedSql = extractSqlFromMetadata(payload);
+        if (extractedSql) {
+          pendingSql = extractedSql;
+          i++;
+          continue; // Skip this message, don't display it as a table
+        }
+      }
 
       if (
         currentMessage.type === "result" &&
@@ -259,7 +298,30 @@ const RenderChat: React.FC<RenderChatProps> = ({
         }
       }
 
+      // If we have pending SQL from a metadata payload, inject it into the result payload
+      if (pendingSql && currentMessage.type === "result") {
+        const payload = currentMessage.payload as ResultPayload;
+        // Only inject if the payload doesn't already have code
+        if (!payload.code) {
+          const enhancedMessage: Message = {
+            ...currentMessage,
+            payload: {
+              ...payload,
+              code: {
+                text: pendingSql,
+                language: "sql",
+              },
+            } as ResultPayload,
+          };
+          output.push(enhancedMessage);
+          pendingSql = null; // Clear the pending SQL
+          i++;
+          continue;
+        }
+      }
+
       output.push(currentMessage);
+      pendingSql = null; // Clear pending SQL if not used
       i++;
     }
     return output;
@@ -336,13 +398,11 @@ const RenderChat: React.FC<RenderChatProps> = ({
                         {item.type !== "merged_result" &&
                           message.type === "result" && (
                             <div className="w-full flex flex-col justify-start items-start gap-3">
-                              {(message.payload as ResultPayload).code && (
-                                <CodeDisplay
-                                  payload={[message.payload as ResultPayload]}
-                                  merged={false}
-                                  handleViewChange={handleViewChange}
-                                />
-                              )}
+                              <CodeDisplay
+                                payload={[message.payload as ResultPayload]}
+                                merged={false}
+                                handleViewChange={handleViewChange}
+                              />
                               <RenderDisplay
                                 payload={message.payload as ResultPayload}
                                 index={index}

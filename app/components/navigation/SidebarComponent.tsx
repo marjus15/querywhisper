@@ -7,12 +7,14 @@ import { SocketContext } from "../contexts/SocketContext";
 import { MdChatBubbleOutline } from "react-icons/md";
 import { GoDatabase } from "react-icons/go";
 import { AiOutlineExperiment } from "react-icons/ai";
+import { MdOutlineDashboard } from "react-icons/md";
 import { FaCircle, FaSquareXTwitter } from "react-icons/fa6";
 import { IoIosWarning } from "react-icons/io";
 
 import HomeSubMenu from "@/app/components/navigation/HomeSubMenu";
 import DataSubMenu from "@/app/components/navigation/DataSubMenu";
 import EvalSubMenu from "@/app/components/navigation/EvalSubMenu";
+import DashboardsSubMenu from "@/app/components/navigation/DashboardsSubMenu";
 
 import { CgFileDocument } from "react-icons/cg";
 
@@ -98,6 +100,12 @@ const SidebarComponent: React.FC = () => {
         icon: <AiOutlineExperiment />,
         onClick: () => changePage("eval", {}, true, unsavedChanges),
       },
+      {
+        title: "Dashboards",
+        mode: ["dashboards"],
+        icon: <MdOutlineDashboard />,
+        onClick: () => changePage("dashboards", {}, true, unsavedChanges),
+      },
     ];
     setItems(_items);
   }, [collections, unsavedChanges, tables, error, loadingTables]);
@@ -178,6 +186,7 @@ const SidebarComponent: React.FC = () => {
         {(currentPage === "eval" ||
           currentPage === "feedback" ||
           currentPage === "display") && <EvalSubMenu />}
+        {currentPage === "dashboards" && <DashboardsSubMenu />}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

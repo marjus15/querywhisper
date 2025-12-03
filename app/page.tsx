@@ -9,6 +9,7 @@ import CollectionPage from "./pages/CollectionPage";
 import EvalPage from "./pages/EvalPage";
 import FeedbackPage from "./pages/FeedbackPage";
 import DisplayPage from "./pages/DisplayPage";
+import DashboardsPage from "./pages/DashboardsPage";
 import { ToastContext } from "./components/contexts/ToastContext";
 import ConfirmationModal from "./components/dialog/ConfirmationModal";
 
@@ -24,6 +25,7 @@ export default function Home() {
       {currentPage === "eval" && <EvalPage />}
       {currentPage === "feedback" && <FeedbackPage />}
       {currentPage === "display" && <DisplayPage />}
+      {currentPage === "dashboards" && <DashboardsPage />}
     </div>
   );
 }

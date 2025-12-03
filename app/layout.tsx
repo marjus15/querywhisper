@@ -22,6 +22,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { RouterProvider } from "./components/contexts/RouterContext";
 import { ProcessingProvider } from "./components/contexts/ProcessingContext";
 import { DatabaseProvider } from "./components/contexts/DatabaseContext";
+import { DashboardProvider } from "./components/contexts/DashboardContext";
 
 const space_grotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -57,9 +58,10 @@ export default function RootLayout({
           <AuthProvider>
             <AuthGuard>
               <ToastProvider>
-                <RouterProvider>
-                  <SessionProvider>
-                    <CollectionProvider>
+                <DashboardProvider>
+                  <RouterProvider>
+                    <SessionProvider>
+                      <CollectionProvider>
                       <ConversationProvider>
                         <ApiProvider>
                           <SocketProvider>
@@ -88,7 +90,8 @@ export default function RootLayout({
                       </ConversationProvider>
                     </CollectionProvider>
                   </SessionProvider>
-                </RouterProvider>
+                  </RouterProvider>
+                </DashboardProvider>
               </ToastProvider>
             </AuthGuard>
           </AuthProvider>

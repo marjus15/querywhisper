@@ -98,6 +98,7 @@ export const RouterProvider = ({ children }: { children: React.ReactNode }) => {
       "eval",
       "feedback",
       "display",
+      "dashboards",
     ];
     const validatedPage = validPages.includes(pageParam) ? pageParam : "chat";
 

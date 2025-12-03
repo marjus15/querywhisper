@@ -1,5 +1,6 @@
 const nextConfig = {
-  output: "export",
+  // Only use static export for production builds (when NEXT_PUBLIC_IS_STATIC is set)
+  ...(process.env.NEXT_PUBLIC_IS_STATIC === "true" && { output: "export" }),
   trailingSlash: false,
   webpack: (config, { isServer }) => {
     // Add a rule to handle .glsl files

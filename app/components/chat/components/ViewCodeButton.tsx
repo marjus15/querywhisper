@@ -30,6 +30,9 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
 
   if (!payload) return null;
 
+  // Check if there's code to display
+  const hasCode = payload.some((p) => p.code && p.code.text);
+
   // Check if data is suitable for chart visualization (has numeric columns)
   const canShowChart = payload.some((p) => {
     if (!p.objects || !Array.isArray(p.objects) || p.objects.length < 2) return false;
@@ -65,46 +68,48 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
           <DisplayIcon payload={payload} />
         </motion.div>
         
-        {/* Code Button */}
-        <motion.div
-          onHoverStart={() => setIsCodeHovered(true)}
-          onHoverEnd={() => setIsCodeHovered(false)}
-          initial={{ width: "2rem", y: 15, opacity: 0 }}
-          animate={{
-            width: isCodeHovered ? "auto" : "2rem",
-            y: 0,
-            opacity: 1,
-          }}
-          transition={{
-            width: { duration: 0.3, ease: "easeInOut" },
-            y: { type: "spring", stiffness: 300, damping: 20, delay: 0.3 },
-            opacity: { duration: 0.2, delay: 0.3 },
-          }}
-          className="overflow-hidden"
-        >
-          <Button
-            variant={"default"}
-            className="bg-highlight/10 hover:bg-highlight/20 h-8 rounded-md flex items-center gap-2 px-2 whitespace-nowrap"
-            onClick={() => {
-              handleViewChange("code", payload);
+        {/* Code Button - only show if there's code to display */}
+        {hasCode && (
+          <motion.div
+            onHoverStart={() => setIsCodeHovered(true)}
+            onHoverEnd={() => setIsCodeHovered(false)}
+            initial={{ width: "2rem", y: 15, opacity: 0 }}
+            animate={{
+              width: isCodeHovered ? "auto" : "2rem",
+              y: 0,
+              opacity: 1,
             }}
+            transition={{
+              width: { duration: 0.3, ease: "easeInOut" },
+              y: { type: "spring", stiffness: 300, damping: 20, delay: 0.3 },
+              opacity: { duration: 0.2, delay: 0.3 },
+            }}
+            className="overflow-hidden"
           >
-            <FaCode size={12} className="text-highlight flex-shrink-0" />
-            <AnimatePresence>
-              {isCodeHovered && (
-                <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, delay: 0.1 }}
-                  className="text-highlight text-xs"
-                >
-                  Query
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Button>
-        </motion.div>
+            <Button
+              variant={"default"}
+              className="bg-highlight/10 hover:bg-highlight/20 h-8 rounded-md flex items-center gap-2 px-2 whitespace-nowrap"
+              onClick={() => {
+                handleViewChange("code", payload);
+              }}
+            >
+              <FaCode size={12} className="text-highlight flex-shrink-0" />
+              <AnimatePresence>
+                {isCodeHovered && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, delay: 0.1 }}
+                    className="text-highlight text-xs"
+                  >
+                    Query
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
+        )}
 
         {/* Chart Button - only show if data can be visualized */}
         {showChartButton && canShowChart && (
@@ -149,7 +154,7 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
           </motion.div>
         )}
 
-        {!merged && (
+        {!merged && payload[0]?.metadata?.collection_name && (
           <motion.div
             className="text-primary text-sm flex items-center justify-center rounded-md"
             initial={{ y: 15, opacity: 0 }}

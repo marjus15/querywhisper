@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useContext } from "react";
 import { ResultPayload } from "@/app/types/chat";
 import { Button } from "@/components/ui/button";
 import { IoClose } from "react-icons/io5";
 import { IoBarChart } from "react-icons/io5";
+import { FaPlus } from "react-icons/fa6";
+import { MdOutlineDashboard } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart,
@@ -17,6 +19,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { DashboardContext } from "@/app/components/contexts/DashboardContext";
 
 interface ChartViewProps {
   payload: ResultPayload[];
@@ -54,8 +64,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
   const [isCloseHovered, setIsCloseHovered] = useState(false);
+  const [isAddHovered, setIsAddHovered] = useState(false);
   const [selectedXAxis, setSelectedXAxis] = useState<string>("");
   const [selectedYAxis, setSelectedYAxis] = useState<string[]>([]);
+
+  const { dashboards, addChartToDashboard, createDashboard } =
+    useContext(DashboardContext);
 
   // Analyze the data to find suitable columns for visualization
   const { chartData, columns, numericColumns, categoryColumns } = useMemo(() => {
@@ -190,52 +204,147 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
           </span>
         </div>
 
-        <motion.div
-          onHoverStart={() => setIsCloseHovered(true)}
-          onHoverEnd={() => setIsCloseHovered(false)}
-          initial={{ width: "2.5rem", y: 15, opacity: 0 }}
-          animate={{
-            width: isCloseHovered ? "auto" : "2.5rem",
-            y: 0,
-            opacity: 1,
-          }}
-          transition={{
-            width: { duration: 0.3, ease: "easeInOut" },
-            y: { type: "spring", stiffness: 300, damping: 20, delay: 0.2 },
-            opacity: { duration: 0.2, delay: 0.2 },
-          }}
-          className="overflow-hidden"
-        >
-          <Button
-            variant="ghost"
-            onClick={() => handleViewChange("chat", null)}
-            className={`h-8 rounded-md flex items-center gap-2 px-2 whitespace-nowrap transition-colors duration-200 ${
-              isCloseHovered
-                ? "bg-error/10 hover:bg-error/20 text-error border border-error"
-                : "bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30"
-            }`}
-          >
-            <IoClose
-              size={12}
-              className={`flex-shrink-0 transition-colors duration-200 ${
-                isCloseHovered ? "text-error" : "text-secondary"
-              }`}
-            />
-            <AnimatePresence>
-              {isCloseHovered && (
-                <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, delay: 0.1 }}
-                  className="text-error text-xs"
+        <div className="flex items-center gap-2">
+          {/* Add to Dashboard Button */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <motion.div
+                onHoverStart={() => setIsAddHovered(true)}
+                onHoverEnd={() => setIsAddHovered(false)}
+                initial={{ width: "2.5rem", y: 15, opacity: 0 }}
+                animate={{
+                  width: isAddHovered ? "auto" : "2.5rem",
+                  y: 0,
+                  opacity: 1,
+                }}
+                transition={{
+                  width: { duration: 0.3, ease: "easeInOut" },
+                  y: { type: "spring", stiffness: 300, damping: 20, delay: 0.15 },
+                  opacity: { duration: 0.2, delay: 0.15 },
+                }}
+                className="overflow-hidden"
+              >
+                <Button
+                  variant="ghost"
+                  className={`h-8 rounded-md flex items-center gap-2 px-2 whitespace-nowrap transition-colors duration-200 ${
+                    isAddHovered
+                      ? "bg-accent/10 hover:bg-accent/20 text-accent border border-accent"
+                      : "bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30"
+                  }`}
                 >
-                  Back to chat
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Button>
-        </motion.div>
+                  <FaPlus
+                    size={12}
+                    className={`flex-shrink-0 transition-colors duration-200 ${
+                      isAddHovered ? "text-accent" : "text-secondary"
+                    }`}
+                  />
+                  <AnimatePresence>
+                    {isAddHovered && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2, delay: 0.1 }}
+                        className="text-accent text-xs"
+                      >
+                        Add to Dashboard
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Button>
+              </motion.div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {dashboards.length > 0 ? (
+                <>
+                  {dashboards.map((dashboard) => (
+                    <DropdownMenuItem
+                      key={dashboard.id}
+                      onClick={() => {
+                        if (selectedXAxis && selectedYAxis.length > 0) {
+                          addChartToDashboard(dashboard.id, {
+                            payload,
+                            xAxis: selectedXAxis,
+                            yAxis: selectedYAxis,
+                          });
+                        }
+                      }}
+                      disabled={!selectedXAxis || selectedYAxis.length === 0}
+                    >
+                      <MdOutlineDashboard className="mr-2" />
+                      <span className="truncate">{dashboard.title}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem
+                onClick={() => {
+                  const newDashboard = createDashboard();
+                  if (selectedXAxis && selectedYAxis.length > 0) {
+                    addChartToDashboard(newDashboard.id, {
+                      payload,
+                      xAxis: selectedXAxis,
+                      yAxis: selectedYAxis,
+                    });
+                  }
+                }}
+                disabled={!selectedXAxis || selectedYAxis.length === 0}
+              >
+                <FaPlus className="mr-2" />
+                <span>Create new dashboard</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Close Button */}
+          <motion.div
+            onHoverStart={() => setIsCloseHovered(true)}
+            onHoverEnd={() => setIsCloseHovered(false)}
+            initial={{ width: "2.5rem", y: 15, opacity: 0 }}
+            animate={{
+              width: isCloseHovered ? "auto" : "2.5rem",
+              y: 0,
+              opacity: 1,
+            }}
+            transition={{
+              width: { duration: 0.3, ease: "easeInOut" },
+              y: { type: "spring", stiffness: 300, damping: 20, delay: 0.2 },
+              opacity: { duration: 0.2, delay: 0.2 },
+            }}
+            className="overflow-hidden"
+          >
+            <Button
+              variant="ghost"
+              onClick={() => handleViewChange("chat", null)}
+              className={`h-8 rounded-md flex items-center gap-2 px-2 whitespace-nowrap transition-colors duration-200 ${
+                isCloseHovered
+                  ? "bg-error/10 hover:bg-error/20 text-error border border-error"
+                  : "bg-secondary/10 hover:bg-secondary/20 text-secondary border border-secondary/30"
+              }`}
+            >
+              <IoClose
+                size={12}
+                className={`flex-shrink-0 transition-colors duration-200 ${
+                  isCloseHovered ? "text-error" : "text-secondary"
+                }`}
+              />
+              <AnimatePresence>
+                {isCloseHovered && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2, delay: 0.1 }}
+                    className="text-error text-xs"
+                  >
+                    Back to chat
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
+        </div>
       </motion.div>
 
       <Separator />
