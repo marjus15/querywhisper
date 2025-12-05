@@ -119,9 +119,9 @@ const DashboardsSubMenu: React.FC = () => {
               >
                 <p className="truncate max-w-[13rem]">
                   {dashboard.title}
-                  {dashboard.charts.length > 0 && (
+                  {((dashboard.charts?.length || 0) + (dashboard.tables?.length || 0)) > 0 && (
                     <span className="text-secondary text-xs ml-1">
-                      ({dashboard.charts.length})
+                      ({(dashboard.charts?.length || 0) + (dashboard.tables?.length || 0)})
                     </span>
                   )}
                 </p>

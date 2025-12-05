@@ -28,7 +28,7 @@ interface RenderDisplayViewProps {
   payload: any;
   type: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleViewChange: (view: "chat" | "code" | "result" | "chart", payload: any) => void;
+  handleViewChange: (view: "chat" | "code" | "result" | "chart" | "table", payload: any) => void;
 }
 
 const RenderDisplayView: React.FC<RenderDisplayViewProps> = ({

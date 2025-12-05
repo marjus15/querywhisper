@@ -3,13 +3,25 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { ResultPayload } from "@/app/types/chat";
 import { ToastContext } from "./ToastContext";
+import { Layout } from "react-grid-layout";
 
 // Types
+export type ChartType = "bar" | "line" | "area" | "pie";
+
 export interface DashboardChart {
   id: string;
   payload: ResultPayload[];
   xAxis: string;
   yAxis: string[];
+  addedAt: string; // ISO string for JSON serialization
+  title?: string;
+  chartType?: ChartType; // Default to "bar" if not specified
+}
+
+export interface DashboardTable {
+  id: string;
+  payload: ResultPayload[];
+  columns: string[];
   addedAt: string; // ISO string for JSON serialization
   title?: string;
 }
@@ -19,6 +31,9 @@ export interface Dashboard {
   title: string;
   createdAt: string; // ISO string for JSON serialization
   charts: DashboardChart[];
+  tables: DashboardTable[];
+  layouts?: Layout[]; // Grid layout positions
+  isLocked?: boolean; // Whether the layout is locked
 }
 
 interface DashboardContextType {
@@ -33,8 +48,16 @@ interface DashboardContextType {
     chart: Omit<DashboardChart, "id" | "addedAt">
   ) => void;
   removeChartFromDashboard: (dashboardId: string, chartId: string) => void;
+  updateChartType: (dashboardId: string, chartId: string, chartType: ChartType) => void;
+  addTableToDashboard: (
+    dashboardId: string,
+    table: Omit<DashboardTable, "id" | "addedAt">
+  ) => void;
+  removeTableFromDashboard: (dashboardId: string, tableId: string) => void;
   getDashboardById: (id: string) => Dashboard | undefined;
   getCurrentDashboardData: () => Dashboard | undefined;
+  updateDashboardLayout: (dashboardId: string, layouts: Layout[]) => void;
+  toggleDashboardLock: (dashboardId: string) => void;
 }
 
 const STORAGE_KEY = "querywhisper_dashboards";
@@ -43,14 +66,19 @@ const COUNTER_KEY = "querywhisper_dashboard_counter";
 export const DashboardContext = createContext<DashboardContextType>({
   dashboards: [],
   currentDashboard: null,
-  createDashboard: () => ({ id: "", title: "", createdAt: "", charts: [] }),
+  createDashboard: () => ({ id: "", title: "", createdAt: "", charts: [], tables: [] }),
   removeDashboard: () => {},
   renameDashboard: () => {},
   selectDashboard: () => {},
   addChartToDashboard: () => {},
   removeChartFromDashboard: () => {},
+  updateChartType: () => {},
+  addTableToDashboard: () => {},
+  removeTableFromDashboard: () => {},
   getDashboardById: () => undefined,
   getCurrentDashboardData: () => undefined,
+  updateDashboardLayout: () => {},
+  toggleDashboardLock: () => {},
 });
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -111,6 +139,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
       title: `Dashboard ${dashboardCounter}`,
       createdAt: new Date().toISOString(),
       charts: [],
+      tables: [],
     };
 
     setDashboards((prev) => [newDashboard, ...prev]);
@@ -172,6 +201,83 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  const updateChartType = useCallback(
+    (dashboardId: string, chartId: string, chartType: ChartType) => {
+      setDashboards((prev) =>
+        prev.map((d) =>
+          d.id === dashboardId
+            ? {
+                ...d,
+                charts: d.charts.map((c) =>
+                  c.id === chartId ? { ...c, chartType } : c
+                ),
+              }
+            : d
+        )
+      );
+    },
+    []
+  );
+
+  const addTableToDashboard = useCallback(
+    (dashboardId: string, table: Omit<DashboardTable, "id" | "addedAt">) => {
+      const newTable: DashboardTable = {
+        ...table,
+        id: `table-${Date.now()}`,
+        addedAt: new Date().toISOString(),
+      };
+
+      setDashboards((prev) =>
+        prev.map((d) =>
+          d.id === dashboardId
+            ? { ...d, tables: [...(d.tables || []), newTable] }
+            : d
+        )
+      );
+
+      const dashboard = dashboards.find((d) => d.id === dashboardId);
+      if (dashboard) {
+        showSuccessToast("Table added", `Table added to "${dashboard.title}"`);
+      }
+    },
+    [dashboards, showSuccessToast]
+  );
+
+  const removeTableFromDashboard = useCallback(
+    (dashboardId: string, tableId: string) => {
+      setDashboards((prev) =>
+        prev.map((d) =>
+          d.id === dashboardId
+            ? { ...d, tables: (d.tables || []).filter((t) => t.id !== tableId) }
+            : d
+        )
+      );
+    },
+    []
+  );
+
+  const updateDashboardLayout = useCallback(
+    (dashboardId: string, layouts: Layout[]) => {
+      setDashboards((prev) =>
+        prev.map((d) =>
+          d.id === dashboardId ? { ...d, layouts } : d
+        )
+      );
+    },
+    []
+  );
+
+  const toggleDashboardLock = useCallback(
+    (dashboardId: string) => {
+      setDashboards((prev) =>
+        prev.map((d) =>
+          d.id === dashboardId ? { ...d, isLocked: !d.isLocked } : d
+        )
+      );
+    },
+    []
+  );
+
   const getDashboardById = useCallback(
     (id: string): Dashboard | undefined => {
       return dashboards.find((d) => d.id === id);
@@ -195,8 +301,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
         selectDashboard,
         addChartToDashboard,
         removeChartFromDashboard,
+        updateChartType,
+        addTableToDashboard,
+        removeTableFromDashboard,
         getDashboardById,
         getCurrentDashboardData,
+        updateDashboardLayout,
+        toggleDashboardLock,
       }}
     >
       {children}

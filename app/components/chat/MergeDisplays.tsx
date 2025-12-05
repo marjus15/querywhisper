@@ -9,7 +9,7 @@ interface MergeDisplaysProps {
   baseKey: string;
   messageId: string;
   handleViewChange: (
-    view: "chat" | "code" | "result" | "chart",
+    view: "chat" | "code" | "result" | "chart" | "table",
     payload: ResultPayload[] | null
   ) => void;
   handleResultPayloadChange: (
