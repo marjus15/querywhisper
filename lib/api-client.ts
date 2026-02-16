@@ -49,13 +49,30 @@ class ApiClient {
     });
 
     if (!response.ok) {
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
       if (response.status === 401) {
         throw new Error('Authentication required. Please sign in.');
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(errorMessage);
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log(`ApiClient POST ${endpoint} - Response:`, result);
+    return result;
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {

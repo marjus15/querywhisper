@@ -33,8 +33,6 @@ import { initializeTree } from "@/app/api/InitializeTree";
 import { getSuggestions } from "@/app/api/getSuggestions";
 import { deleteConversation } from "@/app/api/deleteConversation";
 import { renameConversation } from "@/app/api/renameConversation";
-import { addFeedback } from "@/app/api/addFeedback";
-import { deleteFeedback } from "@/app/api/deleteFeedback";
 import { startConversation } from "@/app/api/startConversation";
 import { RouterContext } from "./RouterContext";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -938,7 +936,7 @@ export const ConversationProvider = ({
     if (!conversation || conversation.error) return;
 
     if (conversation.queries[queryId].feedback === feedback) {
-      await deleteFeedback(id || "", conversationId, queryId);
+      // Feedback endpoint not available on current backend
       setConversations((prevConversations) => {
         const newConversations = prevConversations.map((c) => {
           if (c.id === conversationId && c.queries[queryId]) {
@@ -975,18 +973,13 @@ export const ConversationProvider = ({
   };
 
   const handleAddFeedback = async (
-    user_id: string,
-    conversation_id: string,
-    query_id: string,
-    feedback: number
+    _user_id: string,
+    _conversation_id: string,
+    _query_id: string,
+    _feedback: number
   ) => {
-    const data: BasePayload = await addFeedback(
-      user_id,
-      conversation_id,
-      query_id,
-      feedback
-    );
-    return data;
+    // Feedback endpoint not available on current backend
+    return { error: null } as BasePayload;
   };
 
   const handleAllConversationsError = () => {

@@ -17,7 +17,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getFeedback } from "../api/getFeedback";
 import { RouterContext } from "../components/contexts/RouterContext";
 
 const chartConfig = {
@@ -96,15 +95,8 @@ export default function Home() {
     setFeedbackChartData(chartData);
   };
 
+  // Feedback endpoint not available on current backend
   const fetchMetadata = async () => {
-    if (!id || loading.current) {
-      return;
-    }
-    loading.current = true;
-    const data = await getFeedback(id);
-    setFeedbackMetadata(data);
-    convertToChartData(data);
-    loading.current = false;
   };
 
   const handleBrowseFeedback = () => {

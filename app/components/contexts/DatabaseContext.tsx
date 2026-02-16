@@ -6,6 +6,7 @@ import {
   DatabaseTable,
   DatabaseTablesResponse,
 } from "@/app/api/getDatabaseTables";
+import { getSchemaSuggestions } from "@/app/api/getSchemaSuggestions";
 
 interface DatabaseContextType {
   tables: DatabaseTable[];
@@ -13,6 +14,9 @@ interface DatabaseContextType {
   error: string | null;
   fetchTables: () => Promise<void>;
   refreshDatabase: () => Promise<void>;
+  schemaSuggestions: string[];
+  loadingSuggestions: boolean;
+  refreshSuggestions: () => Promise<void>;
 }
 
 const DatabaseContext = createContext<DatabaseContextType>({
@@ -21,6 +25,9 @@ const DatabaseContext = createContext<DatabaseContextType>({
   error: null,
   fetchTables: async () => {},
   refreshDatabase: async () => {},
+  schemaSuggestions: [],
+  loadingSuggestions: false,
+  refreshSuggestions: async () => {},
 });
 
 export const useDatabase = () => {
@@ -37,6 +44,20 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({
   const [tables, setTables] = useState<DatabaseTable[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schemaSuggestions, setSchemaSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  const refreshSuggestions = async () => {
+    setLoadingSuggestions(true);
+    try {
+      const data = await getSchemaSuggestions(6);
+      setSchemaSuggestions(data.suggestions);
+    } catch (err) {
+      console.error("Error fetching schema suggestions:", err);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
 
   const fetchTables = async () => {
     setLoadingTables(true);
@@ -60,11 +81,13 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const refreshDatabase = async () => {
     await fetchTables();
+    await refreshSuggestions();
   };
 
   // Auto-fetch on mount
   useEffect(() => {
-    refreshDatabase();
+    fetchTables();
+    refreshSuggestions();
   }, []);
 
   const value: DatabaseContextType = {
@@ -73,6 +96,9 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({
     error,
     fetchTables,
     refreshDatabase,
+    schemaSuggestions,
+    loadingSuggestions,
+    refreshSuggestions,
   };
 
   return (

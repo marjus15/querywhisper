@@ -3,7 +3,7 @@
 import { useAuth } from "../contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -22,12 +22,10 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <AppLoadingScreen
+        title="Loading session"
+        subtitle="Checking your account…"
+      />
     );
   }
 

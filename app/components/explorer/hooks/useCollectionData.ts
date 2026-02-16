@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getCollectionData } from "@/app/api/getCollection";
 import { Collection } from "@/app/types/objects";
 import { CollectionDataPayload } from "@/app/types/payloads";
 
@@ -19,34 +18,8 @@ export function useCollectionData({ collection, id }: UseCollectionDataProps) {
   const [usingQuery, setUsingQuery] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
 
+  // Collection data endpoint not available on current backend
   const loadCollectionData = async () => {
-    if (!collection || !id) return;
-    setLoadingData(true);
-    const filter_config = {
-      type: "and",
-      filters: [],
-    };
-
-    if (query.length > 0) {
-      if (!usingQuery) {
-        setPage(1);
-        setUsingQuery(true);
-      }
-    } else {
-      setUsingQuery(false);
-    }
-
-    const data = await getCollectionData(
-      id,
-      collection.name,
-      page,
-      pageSize,
-      sortOn,
-      ascending,
-      filter_config,
-      query
-    );
-    setCollectionData(data);
     setLoadingData(false);
   };
 

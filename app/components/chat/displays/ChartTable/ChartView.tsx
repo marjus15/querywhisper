@@ -26,6 +26,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { DashboardContext } from "@/app/components/contexts/DashboardContext";
 
 interface ChartViewProps {
@@ -67,6 +76,8 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
   const [isAddHovered, setIsAddHovered] = useState(false);
   const [selectedXAxis, setSelectedXAxis] = useState<string>("");
   const [selectedYAxis, setSelectedYAxis] = useState<string[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [dashboardTitle, setDashboardTitle] = useState("");
 
   const { dashboards, addChartToDashboard, createDashboard } =
     useContext(DashboardContext);
@@ -260,9 +271,9 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
                   {dashboards.map((dashboard) => (
                     <DropdownMenuItem
                       key={dashboard.id}
-                      onClick={() => {
+                      onClick={async () => {
                         if (selectedXAxis && selectedYAxis.length > 0) {
-                          addChartToDashboard(dashboard.id, {
+                          await addChartToDashboard(dashboard.id, {
                             payload,
                             xAxis: selectedXAxis,
                             yAxis: selectedYAxis,
@@ -280,14 +291,10 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
               ) : null}
               <DropdownMenuItem
                 onClick={() => {
-                  const newDashboard = createDashboard();
-                  if (selectedXAxis && selectedYAxis.length > 0) {
-                    addChartToDashboard(newDashboard.id, {
-                      payload,
-                      xAxis: selectedXAxis,
-                      yAxis: selectedYAxis,
-                    });
-                  }
+                  setDashboardTitle("");
+                  setTimeout(() => {
+                    setCreateDialogOpen(true);
+                  }, 100);
                 }}
                 disabled={!selectedXAxis || selectedYAxis.length === 0}
               >
@@ -474,6 +481,68 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
           </div>
         )}
       </motion.div>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Create Dashboard</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={dashboardTitle}
+              onChange={(e) => setDashboardTitle(e.target.value)}
+              placeholder="Dashboard name"
+              maxLength={200}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && dashboardTitle.trim()) {
+                  e.preventDefault();
+                  const newDashboard = await createDashboard(dashboardTitle.trim());
+                  setCreateDialogOpen(false);
+                  setDashboardTitle("");
+                  if (selectedXAxis && selectedYAxis.length > 0) {
+                    await addChartToDashboard(newDashboard.id, {
+                      payload,
+                      xAxis: selectedXAxis,
+                      yAxis: selectedYAxis,
+                    }, newDashboard);
+                  }
+                } else if (e.key === "Escape") {
+                  setCreateDialogOpen(false);
+                  setDashboardTitle("");
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setCreateDialogOpen(false);
+              setDashboardTitle("");
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              if (dashboardTitle.trim()) {
+                const newDashboard = await createDashboard(dashboardTitle.trim());
+                setCreateDialogOpen(false);
+                setDashboardTitle("");
+                if (selectedXAxis && selectedYAxis.length > 0) {
+                  await addChartToDashboard(newDashboard.id, {
+                    payload,
+                    xAxis: selectedXAxis,
+                    yAxis: selectedYAxis,
+                  }, newDashboard);
+                }
+              }
+            }} disabled={!dashboardTitle.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

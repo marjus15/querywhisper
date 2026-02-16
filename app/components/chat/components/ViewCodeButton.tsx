@@ -2,7 +2,6 @@
 
 import { ResultPayload } from "@/app/types/chat";
 import { Button } from "@/components/ui/button";
-import DisplayIcon from "./DisplayIcon";
 import { FaCode } from "react-icons/fa6";
 import { IoBarChart } from "react-icons/io5";
 import { BsTable } from "react-icons/bs";
@@ -66,19 +65,6 @@ const CodeDisplay: React.FC<CodeDisplayProps> = ({
       }}
     >
       <div className="flex flex-row gap-2 items-center">
-        <motion.div
-          initial={{ y: 15, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 20,
-            delay: 0.2,
-          }}
-        >
-          <DisplayIcon payload={payload} />
-        </motion.div>
-        
         {/* Code Button - only show if there's code to display */}
         {hasCode && (
           <motion.div

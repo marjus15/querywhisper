@@ -56,6 +56,11 @@ const DashboardsSubMenu: React.FC = () => {
   const [newTitle, setNewTitle] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Create dashboard dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [dashboardTitle, setDashboardTitle] = useState("");
+  const createInputRef = useRef<HTMLInputElement>(null);
+
   const handleRenameClick = (dashboardId: string) => {
     const dashboard = dashboards.find((d) => d.id === dashboardId);
     if (dashboard) {
@@ -67,9 +72,9 @@ const DashboardsSubMenu: React.FC = () => {
     }
   };
 
-  const handleRenameConfirm = () => {
+  const handleRenameConfirm = async () => {
     if (dashboardToRename && newTitle.trim()) {
-      renameDashboard(dashboardToRename, newTitle.trim());
+      await renameDashboard(dashboardToRename, newTitle.trim());
       inputRef.current?.blur();
       setRenameDialogOpen(false);
       setDashboardToRename(null);
@@ -93,13 +98,52 @@ const DashboardsSubMenu: React.FC = () => {
     setRenameDialogOpen(open);
   };
 
+  const handleCreateClick = () => {
+    setDashboardTitle("");
+    setTimeout(() => {
+      setCreateDialogOpen(true);
+    }, 100);
+  };
+
+  const handleCreateConfirm = async () => {
+    if (dashboardTitle.trim()) {
+      try {
+        await createDashboard(dashboardTitle.trim());
+        createInputRef.current?.blur();
+        setCreateDialogOpen(false);
+        setDashboardTitle("");
+      } catch (error) {
+        console.error("Failed to create dashboard:", error);
+        // Keep dialog open on error so user can try again
+      }
+    }
+  };
+
+  const handleCreateCancel = () => {
+    createInputRef.current?.blur();
+    setCreateDialogOpen(false);
+    setDashboardTitle("");
+  };
+
+  const handleCreateDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+    setCreateDialogOpen(open);
+  };
+
   return (
     <SidebarGroup>
       <div className="flex items-center justify-between">
         <SidebarGroupLabel className="flex items-center">
           <p>Dashboards</p>
         </SidebarGroupLabel>
-        <SidebarGroupAction title="Add Dashboard" onClick={createDashboard}>
+        <SidebarGroupAction 
+          title="Add Dashboard" 
+          onClick={handleCreateClick}
+        >
           <FaPlus /> <span className="sr-only">Add Dashboard</span>
         </SidebarGroupAction>
       </div>
@@ -109,7 +153,12 @@ const DashboardsSubMenu: React.FC = () => {
             No dashboards yet. Click + to create one.
           </div>
         ) : (
-          dashboards.map((dashboard) => (
+          dashboards
+            .filter((dashboard, index, self) => 
+              // Remove duplicates by checking if this is the first occurrence of this ID
+              index === self.findIndex((d) => d.id === dashboard.id)
+            )
+            .map((dashboard) => (
             <SidebarMenuItem className="list-none fade-in" key={dashboard.id}>
               <SidebarMenuButton
                 variant={
@@ -140,7 +189,9 @@ const DashboardsSubMenu: React.FC = () => {
                     <span>Rename</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => removeDashboard(dashboard.id)}
+                    onClick={async () => {
+                      await removeDashboard(dashboard.id);
+                    }}
                   >
                     <GoTrash className="text-error" />
                     <span className="text-error">Delete</span>
@@ -184,6 +235,43 @@ const DashboardsSubMenu: React.FC = () => {
             </Button>
             <Button onClick={handleRenameConfirm} disabled={!newTitle.trim()}>
               Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={handleCreateDialogOpenChange}>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Create Dashboard</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              ref={createInputRef}
+              value={dashboardTitle}
+              onChange={(e) => setDashboardTitle(e.target.value)}
+              placeholder="Dashboard name"
+              maxLength={200}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleCreateConfirm();
+                } else if (e.key === "Escape") {
+                  handleCreateCancel();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCreateCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateConfirm} disabled={!dashboardTitle.trim()}>
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>

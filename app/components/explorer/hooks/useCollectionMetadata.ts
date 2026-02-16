@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { getCollectionMetadata } from "@/app/api/getCollectionMetadata";
 import { Collection } from "@/app/types/objects";
 import { MetadataPayload } from "@/app/types/payloads";
 
@@ -57,11 +56,8 @@ export function useCollectionMetadata({
     setMetadataRows({ properties, items });
   };
 
+  // Collection metadata endpoint not available on current backend
   const loadCollectionMetadata = async () => {
-    if (!collection || !id) return;
-    const data = await getCollectionMetadata(id, collection.name);
-    setCollectionMetadata(data);
-    metadataToRows(data);
   };
 
   useEffect(() => {

@@ -9,12 +9,12 @@ import { ConversationProvider } from "./components/contexts/ConversationContext"
 import { SocketProvider } from "./components/contexts/SocketContext";
 import { ApiProvider } from "./components/contexts/ApiContext";
 import { EvaluationProvider } from "./components/contexts/EvaluationContext";
-import StartDialog from "./components/dialog/StartDialog";
 import { ToastProvider } from "./components/contexts/ToastContext";
 import { AuthProvider } from "./components/contexts/AuthContext";
 import { AuthGuard } from "./components/auth/AuthGuard";
 
 import { Toaster } from "@/components/ui/toaster";
+import { AppLoadingScreen } from "@/components/ui/app-loading-screen";
 
 // import { GoogleAnalytics } from "@next/third-parties/google";
 
@@ -23,6 +23,7 @@ import { RouterProvider } from "./components/contexts/RouterContext";
 import { ProcessingProvider } from "./components/contexts/ProcessingContext";
 import { DatabaseProvider } from "./components/contexts/DatabaseContext";
 import { DashboardProvider } from "./components/contexts/DashboardContext";
+import { ConnectionProvider } from "./components/contexts/ConnectionContext";
 
 const space_grotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -41,6 +42,11 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "QueryWhisper",
   description: "Your AI Platform",
+  icons: {
+    icon: [{ url: "/logowhisper.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/logowhisper.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/logowhisper.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
@@ -54,44 +60,45 @@ export default function RootLayout({
       <body
         className={`bg-background h-screen w-screen overflow-hidden ${space_grotesk.variable} ${manrope.variable} font-text antialiased flex`}
       >
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<AppLoadingScreen />}>
           <AuthProvider>
             <AuthGuard>
               <ToastProvider>
-                <DashboardProvider>
-                  <RouterProvider>
-                    <SessionProvider>
-                      <CollectionProvider>
+                <RouterProvider>
+                  <SessionProvider>
+                    <CollectionProvider>
                       <ConversationProvider>
                         <ApiProvider>
-                          <SocketProvider>
-                            <EvaluationProvider>
-                              <ProcessingProvider>
-                                <DatabaseProvider>
-                                  <SidebarProvider>
-                                    <SidebarComponent />
-                                    <main className="flex flex-1 min-w-0 flex-col md:flex-row w-full gap-2 md:gap-6 items-start justify-start p-2 md:p-6 overflow-hidden">
-                                      {/* <img
-                                      referrerPolicy="no-referrer-when-downgrade"
-                                      className="absolute bottom-0 right-0"
-                                      src="https://pixel.weaviate.cloud/a.png?x-pxid=32943cfc-5ae4-4f43-9f12-0c057a0b0df9"
-                                    /> */}
-                                      <SidebarTrigger className="lg:hidden flex text-secondary hover:text-primary hover:bg-foreground_alt z-50" />
-                                      <StartDialog />
-                                      {children}
-                                    </main>
-                                  </SidebarProvider>
-                                </DatabaseProvider>
-                              </ProcessingProvider>
-                              <Toaster />
-                            </EvaluationProvider>
-                          </SocketProvider>
+                          <DashboardProvider>
+                            <SocketProvider>
+                              <EvaluationProvider>
+                                <ProcessingProvider>
+                                  <DatabaseProvider>
+                                    <ConnectionProvider>
+                                      <SidebarProvider>
+                                      <SidebarComponent />
+                                      <main className="flex flex-1 min-w-0 flex-col md:flex-row w-full gap-2 md:gap-6 items-start justify-start p-2 md:p-6 overflow-hidden">
+                                        {/* <img
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        className="absolute bottom-0 right-0"
+                                        src="https://pixel.weaviate.cloud/a.png?x-pxid=32943cfc-5ae4-4f43-9f12-0c057a0b0df9"
+                                      /> */}
+                                        <SidebarTrigger className="lg:hidden flex text-secondary hover:text-primary hover:bg-foreground_alt z-50" />
+                                        {children}
+                                      </main>
+                                      </SidebarProvider>
+                                    </ConnectionProvider>
+                                  </DatabaseProvider>
+                                </ProcessingProvider>
+                                <Toaster />
+                              </EvaluationProvider>
+                            </SocketProvider>
+                          </DashboardProvider>
                         </ApiProvider>
                       </ConversationProvider>
                     </CollectionProvider>
                   </SessionProvider>
-                  </RouterProvider>
-                </DashboardProvider>
+                </RouterProvider>
               </ToastProvider>
             </AuthGuard>
           </AuthProvider>

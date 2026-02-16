@@ -3,10 +3,7 @@
 import { createContext, useEffect, useRef, useState, useContext } from "react";
 import { usePathname } from "next/navigation";
 import { initializeUser } from "@/app/api/initializeUser";
-import { saveConfig } from "@/app/api/saveConfig";
 import { UserConfig } from "@/app/types/objects";
-import { getConfigList } from "@/app/api/getConfigList";
-import { getConfig } from "@/app/api/getConfig";
 import { supabase } from "@/lib/supabase";
 import {
   BasePayload,
@@ -14,9 +11,6 @@ import {
   ConfigPayload,
   CorrectSettings,
 } from "@/app/types/payloads";
-import { createConfig } from "@/app/api/createConfig";
-import { loadConfig } from "@/app/api/loadConfig";
-import { deleteConfig } from "@/app/api/deleteConfig";
 import { ToastContext } from "./ToastContext";
 import { useDeviceId } from "@/app/getDeviceId";
 
@@ -174,21 +168,7 @@ export const SessionProvider = ({
   // TODO : Add fetching all possible model names from the API
 
   const fetchCurrentConfig = async () => {
-    setLoadingConfig(true);
-    if (!id) {
-      return;
-    }
-    const config = await getConfig(id);
-    if (config.error) {
-      console.error(config.error);
-      showErrorToast("Failed to Load Configuration", config.error);
-      return;
-    }
-    setUserConfig({
-      backend: config.config,
-      frontend: config.frontend_config,
-    });
-    setLoadingConfig(false);
+    // Config endpoint not available on current backend
   };
 
   const updateUnsavedChanges = (unsaved: boolean) => {
@@ -250,140 +230,27 @@ export const SessionProvider = ({
   };
 
   const updateConfig = async (
-    config: UserConfig,
-    setDefault: boolean = false
+    _config: UserConfig,
+    _setDefault: boolean = false
   ) => {
-    setLoadingConfig(true);
-    setSavingConfig(true);
-    const response: ConfigPayload = await saveConfig(
-      id,
-      config.backend,
-      config.frontend,
-      setDefault
-    );
-    if (response.error) {
-      console.error(response.error);
-      showErrorToast("Failed to Save Configuration", response.error);
-    } else if (response.warnings.length > 0) {
-      response.warnings.forEach((warning) => {
-        showWarningToast("Configuration Saved with Warning", warning);
-      });
-    } else {
-      showSuccessToast(
-        "Configuration Saved",
-        "Your configuration has been saved successfully."
-      );
-    }
-    setUserConfig({
-      backend: response.config,
-      frontend: response.frontend_config,
-    });
-    getConfigIDs(id || "");
-    setLoadingConfig(false);
-    triggerFetchCollection();
-    triggerFetchConversation();
-    setSavingConfig(false);
+    // Config save endpoint not available on current backend
+    showWarningToast("Not Available", "Configuration management is not supported yet.");
   };
 
-  const handleLoadConfig = async (user_id: string, config_id: string) => {
-    if (!user_id || !config_id) {
-      return;
-    }
-    setLoadingConfig(true);
-    const response: ConfigPayload = await loadConfig(user_id, config_id);
-    if (response.error) {
-      console.error(response.error);
-      showErrorToast("Failed to Load Configuration", response.error);
-    } else {
-      showSuccessToast(
-        "Configuration Loaded",
-        "Configuration loaded successfully."
-      );
-    }
-    setUserConfig({
-      backend: response.config,
-      frontend: response.frontend_config,
-    });
-    setLoadingConfig(false);
+  const handleLoadConfig = async (_user_id: string, _config_id: string) => {
+    // Config load endpoint not available on current backend
   };
 
-  const handleCreateConfig = async (user_id: string) => {
-    if (!user_id) {
-      return;
-    }
-    setLoadingConfig(true);
-    const response: ConfigPayload = await createConfig(user_id);
-    if (response.error) {
-      console.error(response.error);
-      showErrorToast("Failed to Create Configuration", response.error);
-      setLoadingConfig(false);
-      return;
-    } else {
-      showSuccessToast(
-        "Configuration Created",
-        "New configuration created successfully."
-      );
-    }
-
-    // Check if name already exists and generate unique name if needed
-    if (response.config) {
-      const baseName = response.config.name || "New Config";
-      let uniqueName = baseName;
-      let counter = 1;
-
-      while (configIDs.some((config) => config.name === uniqueName)) {
-        uniqueName = `${baseName} ${counter}`;
-        counter++;
-      }
-
-      // Update the config with unique name if needed
-      if (uniqueName !== baseName) {
-        response.config.name = uniqueName;
-      }
-    }
-
-    setUserConfig({
-      backend: response.config,
-      frontend: response.frontend_config,
-    });
-    getConfigIDs(user_id);
-    setLoadingConfig(false);
+  const handleCreateConfig = async (_user_id: string) => {
+    // Config create endpoint not available on current backend
   };
 
   const handleDeleteConfig = async (
-    user_id: string,
-    config_id: string,
-    selectedConfig: boolean
+    _user_id: string,
+    _config_id: string,
+    _selectedConfig: boolean
   ) => {
-    if (!user_id || !config_id) {
-      return;
-    }
-    setLoadingConfig(true);
-    const response: BasePayload = await deleteConfig(user_id, config_id);
-    if (response.error) {
-      console.error(response.error);
-      showErrorToast("Failed to Delete Configuration", response.error);
-    } else {
-      showSuccessToast(
-        "Configuration Deleted",
-        "Configuration deleted successfully."
-      );
-      if (selectedConfig) {
-        // Find another config to load
-        const otherConfig = configIDs.find(
-          (config) => config.config_id !== config_id
-        );
-        if (otherConfig) {
-          handleLoadConfig(user_id, otherConfig.config_id);
-        } else {
-          setUserConfig(null);
-        }
-      }
-    }
-    getConfigIDs(user_id);
-    setLoadingConfig(false);
-    triggerFetchConversation();
-    triggerFetchCollection();
+    // Config delete endpoint not available on current backend
   };
 
   return (

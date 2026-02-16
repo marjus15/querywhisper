@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LuRefreshCw } from "react-icons/lu";
-import { getCollectionData } from "@/app/api/getCollection";
 import { GoTrash } from "react-icons/go";
 import { Filter } from "@/app/types/objects";
 import { motion } from "framer-motion";
@@ -48,8 +47,6 @@ import { useSearchParams, usePathname } from "next/navigation";
 
 import React, { useContext } from "react";
 import { SessionContext } from "@/app/components/contexts/SessionContext";
-import { getFeedback } from "@/app/api/getFeedback";
-import { deleteFeedback } from "@/app/api/deleteFeedback";
 import { RouterContext } from "../components/contexts/RouterContext";
 
 // Import modern setting components
@@ -78,12 +75,8 @@ export default function Home() {
   const [feedbackFilter, setFeedbackFilter] = useState<string>("all");
   const [maxPage, setMaxPage] = useState<number>(0);
 
+  // Feedback endpoint not available on current backend
   const fetchMetadata = async () => {
-    if (!id) {
-      return;
-    }
-    const data: FeedbackMetadata = await getFeedback(id);
-    setMaxPage(Math.ceil(data.total_feedback / feedbackPageSize) - 1);
   };
 
   const fetchFeedbackData = async () => {
@@ -128,17 +121,8 @@ export default function Home() {
       filters: filters,
     };
 
-    const feedbackData = await getCollectionData(
-      id,
-      "ELYSIA_FEEDBACK__",
-      feedbackPage - 1, // Convert from 1-based UI to 0-based API
-      feedbackPageSize,
-      feedbackSortOn,
-      feedbackAscending,
-      filter_config,
-      ""
-    );
-    setFeedbackData(feedbackData as FeedbackCollectionData);
+    // Collection data endpoint not available on current backend
+    setFeedbackData(null);
     fetchMetadata();
     feedbackLoading.current = false;
   };
@@ -204,19 +188,8 @@ export default function Home() {
     routerSetPage(feedbackPage + 1);
   };
 
-  const removeFeedback = async (index: number) => {
-    const feedback = feedbackData?.items[index];
-    if (feedback) {
-      const res = await deleteFeedback(
-        feedback.user_id,
-        feedback.conversation_id,
-        feedback.query_id
-      );
-      if (res.error) {
-        throw new Error(res.error);
-      }
-      fetchFeedbackData();
-    }
+  // Feedback delete endpoint not available on current backend
+  const removeFeedback = async (_index: number) => {
   };
 
   return (

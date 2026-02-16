@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { ResultPayload } from "@/app/types/chat";
 import { ToastContext } from "./ToastContext";
+import { ApiContext } from "./ApiContext";
 import { Layout } from "react-grid-layout";
 
 // Types
@@ -39,20 +40,22 @@ export interface Dashboard {
 interface DashboardContextType {
   dashboards: Dashboard[];
   currentDashboard: string | null;
-  createDashboard: () => Dashboard;
+  createDashboard: (title: string) => Promise<Dashboard>;
   removeDashboard: (id: string) => void;
   renameDashboard: (id: string, newTitle: string) => void;
   selectDashboard: (id: string) => void;
   addChartToDashboard: (
     dashboardId: string,
-    chart: Omit<DashboardChart, "id" | "addedAt">
-  ) => void;
+    chart: Omit<DashboardChart, "id" | "addedAt">,
+    dashboard?: Dashboard
+  ) => Promise<void>;
   removeChartFromDashboard: (dashboardId: string, chartId: string) => void;
   updateChartType: (dashboardId: string, chartId: string, chartType: ChartType) => void;
   addTableToDashboard: (
     dashboardId: string,
-    table: Omit<DashboardTable, "id" | "addedAt">
-  ) => void;
+    table: Omit<DashboardTable, "id" | "addedAt">,
+    dashboard?: Dashboard
+  ) => Promise<void>;
   removeTableFromDashboard: (dashboardId: string, tableId: string) => void;
   getDashboardById: (id: string) => Dashboard | undefined;
   getCurrentDashboardData: () => Dashboard | undefined;
@@ -60,13 +63,10 @@ interface DashboardContextType {
   toggleDashboardLock: (dashboardId: string) => void;
 }
 
-const STORAGE_KEY = "querywhisper_dashboards";
-const COUNTER_KEY = "querywhisper_dashboard_counter";
-
 export const DashboardContext = createContext<DashboardContextType>({
   dashboards: [],
   currentDashboard: null,
-  createDashboard: () => ({ id: "", title: "", createdAt: "", charts: [], tables: [] }),
+  createDashboard: async () => ({ id: "", title: "", createdAt: "", charts: [], tables: [] }),
   removeDashboard: () => {},
   renameDashboard: () => {},
   selectDashboard: () => {},
@@ -88,194 +88,408 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentDashboard, setCurrentDashboard] = useState<string | null>(null);
   const [dashboardCounter, setDashboardCounter] = useState(1);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { showSuccessToast } = useContext(ToastContext);
+  const { showSuccessToast, showErrorToast } = useContext(ToastContext);
+  const { getDashboards, createDashboard: createDashboardApi, updateDashboard: updateDashboardApi, deleteDashboard: deleteDashboardApi } = useContext(ApiContext);
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Function to reload dashboards from API
+  const reloadDashboards = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const storedCounter = localStorage.getItem(COUNTER_KEY);
-
-      if (stored) {
-        const parsed = JSON.parse(stored) as Dashboard[];
-        setDashboards(parsed);
-      }
-
-      if (storedCounter) {
-        setDashboardCounter(parseInt(storedCounter, 10));
-      }
+      const response = await getDashboards();
+      const convertedDashboards = response.dashboards.map(convertApiDashboardToFrontend);
+      setDashboards(convertedDashboards);
+      console.log("DashboardContext - Reloaded dashboards:", convertedDashboards.length);
     } catch (error) {
-      console.error("Failed to load dashboards from localStorage:", error);
+      console.error("Failed to reload dashboards:", error);
     }
-    setIsInitialized(true);
-  }, []);
+  }, [getDashboards]);
 
-  // Save to localStorage when dashboards change
+  // Helper function to convert API dashboard format to frontend format
+  const convertApiDashboardToFrontend = (apiDashboard: any): Dashboard => {
+    return {
+      id: apiDashboard.id,
+      title: apiDashboard.title,
+      createdAt: apiDashboard.created_at,
+      charts: apiDashboard.data?.charts || [],
+      tables: apiDashboard.data?.tables || [],
+      layouts: apiDashboard.data?.layouts || [],
+      isLocked: apiDashboard.is_locked || false,
+    };
+  };
+
+  // Helper function to convert frontend dashboard format to API format
+  const convertFrontendDashboardToApi = (dashboard: Dashboard): any => {
+    return {
+      title: dashboard.title,
+      data: {
+        charts: dashboard.charts || [],
+        tables: dashboard.tables || [],
+        layouts: dashboard.layouts || [],
+      },
+      is_locked: dashboard.isLocked || false,
+    };
+  };
+
+  // Load dashboards from API on mount
   useEffect(() => {
-    if (isInitialized) {
+    const loadDashboards = async () => {
+      setIsLoading(true);
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dashboards));
+        const response = await getDashboards();
+        const convertedDashboards = response.dashboards.map(convertApiDashboardToFrontend);
+        setDashboards(convertedDashboards);
+        
+        // Calculate counter from existing dashboards
+        if (convertedDashboards.length > 0) {
+          const numbers = convertedDashboards
+            .map(d => {
+              const match = d.title.match(/Dashboard (\d+)/);
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter(n => n > 0);
+          if (numbers.length > 0) {
+            setDashboardCounter(Math.max(...numbers) + 1);
+          }
+        }
       } catch (error) {
-        console.error("Failed to save dashboards to localStorage:", error);
+        console.error("Failed to load dashboards from API:", error);
+        showErrorToast("Error", "Failed to load dashboards");
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
       }
-    }
-  }, [dashboards, isInitialized]);
-
-  // Save counter to localStorage when it changes
-  useEffect(() => {
-    if (isInitialized) {
-      try {
-        localStorage.setItem(COUNTER_KEY, dashboardCounter.toString());
-      } catch (error) {
-        console.error("Failed to save dashboard counter to localStorage:", error);
-      }
-    }
-  }, [dashboardCounter, isInitialized]);
-
-  const createDashboard = useCallback((): Dashboard => {
-    const newDashboard: Dashboard = {
-      id: `dashboard-${Date.now()}`,
-      title: `Dashboard ${dashboardCounter}`,
-      createdAt: new Date().toISOString(),
-      charts: [],
-      tables: [],
     };
 
-    setDashboards((prev) => [newDashboard, ...prev]);
-    setCurrentDashboard(newDashboard.id);
-    setDashboardCounter((prev) => prev + 1);
+    loadDashboards();
+  }, [getDashboards, showErrorToast]);
 
-    return newDashboard;
-  }, [dashboardCounter]);
+  const createDashboard = useCallback(async (title: string): Promise<Dashboard> => {
+    try {
+      if (!title || !title.trim()) {
+        throw new Error("Dashboard title is required");
+      }
 
-  const removeDashboard = useCallback((id: string) => {
-    setDashboards((prev) => prev.filter((d) => d.id !== id));
-    setCurrentDashboard((prev) => (prev === id ? null : prev));
-  }, []);
+      console.log("DashboardContext - Creating dashboard with title:", title.trim());
+      let apiDashboard: any;
+      try {
+        apiDashboard = await createDashboardApi({
+          title: title.trim(),
+          data: { charts: [], tables: [], layouts: [] },
+          is_locked: false,
+        });
+      } catch (apiError) {
+        console.error("DashboardContext - Error from createDashboardApi:", apiError);
+        throw apiError;
+      }
 
-  const renameDashboard = useCallback((id: string, newTitle: string) => {
-    setDashboards((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, title: newTitle } : d))
-    );
-  }, []);
+      console.log("DashboardContext - API response:", apiDashboard);
+      console.log("DashboardContext - API response type:", typeof apiDashboard);
+      console.log("DashboardContext - API response is array:", Array.isArray(apiDashboard));
+      if (apiDashboard) {
+        console.log("DashboardContext - API response keys:", Object.keys(apiDashboard));
+        console.log("DashboardContext - API response.id:", apiDashboard.id);
+        console.log("DashboardContext - API response.title:", apiDashboard.title);
+      }
+
+      if (!apiDashboard) {
+        console.error("DashboardContext - apiDashboard is null or undefined");
+        throw new Error("Invalid dashboard response from API: response is null or undefined");
+      }
+
+      // Check if response is an error object
+      if (apiDashboard.error || apiDashboard.detail) {
+        const errorMsg = apiDashboard.error || apiDashboard.detail || "Unknown error";
+        console.error("DashboardContext - API returned error:", errorMsg);
+        throw new Error(`Failed to create dashboard: ${errorMsg}`);
+      }
+
+      if (!apiDashboard.id) {
+        console.error("DashboardContext - apiDashboard missing id field:", apiDashboard);
+        throw new Error(`Invalid dashboard response from API: missing id field. Response: ${JSON.stringify(apiDashboard)}`);
+      }
+
+      const newDashboard = convertApiDashboardToFrontend(apiDashboard);
+      console.log("DashboardContext - Converted dashboard:", newDashboard);
+
+      // Reload dashboards from API to ensure we have the latest data
+      await reloadDashboards();
+      
+      // Set the newly created dashboard as current
+      setCurrentDashboard(newDashboard.id);
+
+      console.log("DashboardContext - Dashboard created successfully:", newDashboard.id);
+      showSuccessToast("Success", `Dashboard "${newDashboard.title}" created successfully`);
+      return newDashboard;
+    } catch (error) {
+      console.error("Failed to create dashboard:", error);
+      showErrorToast("Error", `Failed to create dashboard: ${error instanceof Error ? error.message : "Unknown error"}`);
+      throw error;
+    }
+  }, [createDashboardApi, showErrorToast, reloadDashboards, showSuccessToast]);
+
+  const removeDashboard = useCallback(async (id: string) => {
+    try {
+      await deleteDashboardApi(id);
+      setDashboards((prev) => prev.filter((d) => d.id !== id));
+      setCurrentDashboard((prev) => (prev === id ? null : prev));
+    } catch (error) {
+      console.error("Failed to delete dashboard:", error);
+      showErrorToast("Error", "Failed to delete dashboard");
+      throw error;
+    }
+  }, [deleteDashboardApi, showErrorToast]);
+
+  const renameDashboard = useCallback(async (id: string, newTitle: string) => {
+    try {
+      const dashboard = dashboards.find((d) => d.id === id);
+      if (!dashboard) {
+        throw new Error("Dashboard not found");
+      }
+
+      const updatedDashboard = { ...dashboard, title: newTitle };
+      const apiData = convertFrontendDashboardToApi(updatedDashboard);
+      const apiResponse = await updateDashboardApi(id, { title: newTitle });
+      
+      const converted = convertApiDashboardToFrontend(apiResponse);
+      setDashboards((prev) =>
+        prev.map((d) => (d.id === id ? converted : d))
+      );
+    } catch (error) {
+      console.error("Failed to rename dashboard:", error);
+      showErrorToast("Error", "Failed to rename dashboard");
+      throw error;
+    }
+  }, [dashboards, updateDashboardApi, showErrorToast]);
 
   const selectDashboard = useCallback((id: string) => {
     setCurrentDashboard(id);
   }, []);
 
   const addChartToDashboard = useCallback(
-    (dashboardId: string, chart: Omit<DashboardChart, "id" | "addedAt">) => {
-      const newChart: DashboardChart = {
-        ...chart,
-        id: `chart-${Date.now()}`,
-        addedAt: new Date().toISOString(),
-      };
+    async (dashboardId: string, chart: Omit<DashboardChart, "id" | "addedAt">, providedDashboard?: Dashboard) => {
+      try {
+        // Use provided dashboard if available, otherwise find it in state
+        const dashboard = providedDashboard || dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
 
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId
-            ? { ...d, charts: [...d.charts, newChart] }
-            : d
-        )
-      );
+        const newChart: DashboardChart = {
+          ...chart,
+          id: `chart-${Date.now()}`,
+          addedAt: new Date().toISOString(),
+        };
 
-      const dashboard = dashboards.find((d) => d.id === dashboardId);
-      if (dashboard) {
+        const updatedDashboard = {
+          ...dashboard,
+          charts: [...dashboard.charts, newChart],
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+
         showSuccessToast("Chart added", `Chart added to "${dashboard.title}"`);
+      } catch (error) {
+        console.error("Failed to add chart to dashboard:", error);
+        showErrorToast("Error", "Failed to add chart");
+        throw error;
       }
     },
-    [dashboards, showSuccessToast]
+    [dashboards, updateDashboardApi, showSuccessToast, showErrorToast]
   );
 
   const removeChartFromDashboard = useCallback(
-    (dashboardId: string, chartId: string) => {
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId
-            ? { ...d, charts: d.charts.filter((c) => c.id !== chartId) }
-            : d
-        )
-      );
+    async (dashboardId: string, chartId: string) => {
+      try {
+        const dashboard = dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
+
+        const updatedDashboard = {
+          ...dashboard,
+          charts: dashboard.charts.filter((c) => c.id !== chartId),
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+      } catch (error) {
+        console.error("Failed to remove chart from dashboard:", error);
+        showErrorToast("Error", "Failed to remove chart");
+        throw error;
+      }
     },
-    []
+    [dashboards, updateDashboardApi, showErrorToast]
   );
 
   const updateChartType = useCallback(
-    (dashboardId: string, chartId: string, chartType: ChartType) => {
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId
-            ? {
-                ...d,
-                charts: d.charts.map((c) =>
-                  c.id === chartId ? { ...c, chartType } : c
-                ),
-              }
-            : d
-        )
-      );
+    async (dashboardId: string, chartId: string, chartType: ChartType) => {
+      try {
+        const dashboard = dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
+
+        const updatedDashboard = {
+          ...dashboard,
+          charts: dashboard.charts.map((c) =>
+            c.id === chartId ? { ...c, chartType } : c
+          ),
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+      } catch (error) {
+        console.error("Failed to update chart type:", error);
+        showErrorToast("Error", "Failed to update chart type");
+        throw error;
+      }
     },
-    []
+    [dashboards, updateDashboardApi, showErrorToast]
   );
 
   const addTableToDashboard = useCallback(
-    (dashboardId: string, table: Omit<DashboardTable, "id" | "addedAt">) => {
-      const newTable: DashboardTable = {
-        ...table,
-        id: `table-${Date.now()}`,
-        addedAt: new Date().toISOString(),
-      };
+    async (dashboardId: string, table: Omit<DashboardTable, "id" | "addedAt">, providedDashboard?: Dashboard) => {
+      try {
+        // Use provided dashboard if available, otherwise find it in state
+        const dashboard = providedDashboard || dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
 
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId
-            ? { ...d, tables: [...(d.tables || []), newTable] }
-            : d
-        )
-      );
+        const newTable: DashboardTable = {
+          ...table,
+          id: `table-${Date.now()}`,
+          addedAt: new Date().toISOString(),
+        };
 
-      const dashboard = dashboards.find((d) => d.id === dashboardId);
-      if (dashboard) {
+        const updatedDashboard = {
+          ...dashboard,
+          tables: [...(dashboard.tables || []), newTable],
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+
         showSuccessToast("Table added", `Table added to "${dashboard.title}"`);
+      } catch (error) {
+        console.error("Failed to add table to dashboard:", error);
+        showErrorToast("Error", "Failed to add table");
+        throw error;
       }
     },
-    [dashboards, showSuccessToast]
+    [dashboards, updateDashboardApi, showSuccessToast, showErrorToast]
   );
 
   const removeTableFromDashboard = useCallback(
-    (dashboardId: string, tableId: string) => {
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId
-            ? { ...d, tables: (d.tables || []).filter((t) => t.id !== tableId) }
-            : d
-        )
-      );
+    async (dashboardId: string, tableId: string) => {
+      try {
+        const dashboard = dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
+
+        const updatedDashboard = {
+          ...dashboard,
+          tables: (dashboard.tables || []).filter((t) => t.id !== tableId),
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+      } catch (error) {
+        console.error("Failed to remove table from dashboard:", error);
+        showErrorToast("Error", "Failed to remove table");
+        throw error;
+      }
     },
-    []
+    [dashboards, updateDashboardApi, showErrorToast]
   );
 
   const updateDashboardLayout = useCallback(
-    (dashboardId: string, layouts: Layout[]) => {
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId ? { ...d, layouts } : d
-        )
-      );
+    async (dashboardId: string, layouts: Layout[]) => {
+      try {
+        const dashboard = dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
+
+        const updatedDashboard = {
+          ...dashboard,
+          layouts,
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+      } catch (error) {
+        console.error("Failed to update dashboard layout:", error);
+        showErrorToast("Error", "Failed to update layout");
+        throw error;
+      }
     },
-    []
+    [dashboards, updateDashboardApi, showErrorToast]
   );
 
   const toggleDashboardLock = useCallback(
-    (dashboardId: string) => {
-      setDashboards((prev) =>
-        prev.map((d) =>
-          d.id === dashboardId ? { ...d, isLocked: !d.isLocked } : d
-        )
-      );
+    async (dashboardId: string) => {
+      try {
+        const dashboard = dashboards.find((d) => d.id === dashboardId);
+        if (!dashboard) {
+          throw new Error("Dashboard not found");
+        }
+
+        const updatedDashboard = {
+          ...dashboard,
+          isLocked: !dashboard.isLocked,
+        };
+
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { 
+          data: apiData.data,
+          is_locked: updatedDashboard.isLocked,
+        });
+        
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+      } catch (error) {
+        console.error("Failed to toggle dashboard lock:", error);
+        showErrorToast("Error", "Failed to toggle lock");
+        throw error;
+      }
     },
-    []
+    [dashboards, updateDashboardApi, showErrorToast]
   );
 
   const getDashboardById = useCallback(

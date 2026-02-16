@@ -23,6 +23,7 @@ import { RouterContext } from "../components/contexts/RouterContext";
 import { v4 as uuidv4 } from "uuid";
 import RateLimitDialog from "../components/navigation/RateLimitDialog";
 import { IoRefresh } from "react-icons/io5";
+import { useDatabase } from "../components/contexts/DatabaseContext";
 
 import {
   DropdownMenu,
@@ -35,7 +36,6 @@ import { Button } from "@/components/ui/button";
 
 import dynamic from "next/dynamic";
 import { Separator } from "@/components/ui/separator";
-import { CollectionContext } from "../components/contexts/CollectionContext";
 
 const AbstractSphereScene = dynamic(
   () => import("@/app/components/threejs/AbstractSphere"),
@@ -60,8 +60,6 @@ export default function ChatPage() {
     addConversation,
   } = useContext(ConversationContext);
   const { changePage } = useContext(RouterContext);
-
-  const { getRandomPrompts, collections } = useContext(CollectionContext);
 
   const [currentQuery, setCurrentQuery] = useState<{
     [key: string]: Query;
@@ -96,7 +94,7 @@ export default function ChatPage() {
     distortionStrength.current = Math.min(distortionStrength.current, 0.3);
   };
 
-  const [randomPrompts, setRandomPrompts] = useState<string[]>([]);
+  const { schemaSuggestions, loadingSuggestions, refreshSuggestions } = useDatabase();
 
   const handleSendQuery = async (
     query: string,
@@ -215,11 +213,6 @@ export default function ChatPage() {
     setMode("chat");
   }, [currentConversation]);
 
-  useEffect(() => {
-    if (collections.length > 0) {
-      setRandomPrompts(getRandomPrompts(4));
-    }
-  }, [collections]);
 
   if (!socketOnline) {
     return (
@@ -360,11 +353,12 @@ export default function ChatPage() {
                 <Button
                   variant="default"
                   className="w-10"
+                  disabled={loadingSuggestions}
                   onClick={() => {
-                    setRandomPrompts(getRandomPrompts(4));
+                    refreshSuggestions();
                   }}
                 >
-                  <IoRefresh />
+                  <IoRefresh className={loadingSuggestions ? "animate-spin" : ""} />
                 </Button>
               </div>
 
@@ -377,7 +371,7 @@ export default function ChatPage() {
                   delayChildren: 0.05, // Reduced from 0.2
                 }}
               >
-                {randomPrompts.map((prompt, index) => (
+                {schemaSuggestions.map((prompt, index) => (
                   <motion.button
                     key={index + "prompt"}
                     onClick={() => handleSendQuery(prompt)}

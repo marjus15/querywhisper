@@ -8,6 +8,7 @@ import { MdChatBubbleOutline } from "react-icons/md";
 import { GoDatabase } from "react-icons/go";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { MdOutlineDashboard } from "react-icons/md";
+import { HiOutlineServerStack } from "react-icons/hi2";
 import { FaCircle, FaSquareXTwitter } from "react-icons/fa6";
 import { IoIosWarning } from "react-icons/io";
 
@@ -94,17 +95,24 @@ const SidebarComponent: React.FC = () => {
         loading: loadingTables,
         onClick: () => changePage("data", {}, true, unsavedChanges),
       },
-      {
-        title: "Evaluation",
-        mode: ["eval", "feedback", "display"],
-        icon: <AiOutlineExperiment />,
-        onClick: () => changePage("eval", {}, true, unsavedChanges),
-      },
+      // Evaluation menu item hidden but logic kept intact
+      // {
+      //   title: "Evaluation",
+      //   mode: ["eval", "feedback", "display"],
+      //   icon: <AiOutlineExperiment />,
+      //   onClick: () => changePage("eval", {}, true, unsavedChanges),
+      // },
       {
         title: "Dashboards",
         mode: ["dashboards"],
         icon: <MdOutlineDashboard />,
         onClick: () => changePage("dashboards", {}, true, unsavedChanges),
+      },
+      {
+        title: "Connections",
+        mode: ["connections"],
+        icon: <HiOutlineServerStack />,
+        onClick: () => changePage("connections", {}, true, unsavedChanges),
       },
     ];
     setItems(_items);

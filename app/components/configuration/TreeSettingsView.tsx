@@ -1,7 +1,6 @@
 "use client";
 
 import { ModelProvider } from "@/app/types/objects";
-import { getModels } from "@/app/api/getModels";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TbArrowBackUp } from "react-icons/tb";
@@ -54,25 +53,9 @@ export default function TreeSettingsView({
     modelsData
   );
 
-  // Fetch models data on component mount
+  // Models endpoint not available on current backend
   useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        setLoadingModels(true);
-        const modelsPayload = await getModels();
-        if (modelsPayload.error) {
-          console.error("Error fetching models:", modelsPayload.error);
-        } else {
-          setModelsData(modelsPayload.models);
-        }
-      } catch (error) {
-        console.error("Failed to fetch models:", error);
-      } finally {
-        setLoadingModels(false);
-      }
-    };
-
-    fetchModels();
+    setLoadingModels(false);
   }, []);
 
   if (loading) {

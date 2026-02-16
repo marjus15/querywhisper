@@ -2,9 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Collection } from "@/app/types/objects";
-import { getCollections } from "@/app/api/getCollections";
 import { SessionContext } from "./SessionContext";
-import { deleteCollectionMetadata } from "@/app/api/deleteCollectionMetadata";
 import { ToastContext } from "./ToastContext";
 
 export const CollectionContext = createContext<{
@@ -63,22 +61,8 @@ export const CollectionProvider = ({
     showSuccessToast(`${collections.length} Collections Loaded`);
   };
 
-  const deleteCollection = async (collection_name: string) => {
-    if (!idRef.current) return;
-    const result = await deleteCollectionMetadata(
-      idRef.current,
-      collection_name
-    );
-
-    if (result.error) {
-      showErrorToast("Failed to Remove Analysis", result.error);
-    } else {
-      showSuccessToast(
-        "Analysis Removed",
-        `Analysis for "${collection_name}" has been removed successfully.`
-      );
-      fetchCollections();
-    }
+  const deleteCollection = async (_collection_name: string) => {
+    // Collection metadata endpoint not available on current backend
   };
 
   const getRandomPrompts = (amount: number = 4) => {

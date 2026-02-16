@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 
-import { getMappingTypes } from "@/app/api/getMappingTypes";
 import { UseCollectionMetadataEditorReturn } from "./hooks/useCollectionMetadataEditor";
 import MetadataSummaryEditor from "./components/MetadataSummaryEditor";
 import MetadataMappingsEditor from "./components/MetadataMappingsEditor";
@@ -29,8 +28,9 @@ const DataMetadata: React.FC<DataMetadataProps> = ({
   >({});
 
   useEffect(() => {
-    // Fetch mapping types on mount
-    getMappingTypes().then((res: MappingTypesPayload) => {
+    // Mapping types endpoint not available on current backend
+    const noopFetch = async () => {
+      const res = { error: null, mapping_types: [] } as unknown as MappingTypesPayload;
       if (!res.error) {
         setMappingTypes(
           res.mapping_types.reduce(
@@ -51,7 +51,8 @@ const DataMetadata: React.FC<DataMetadataProps> = ({
           )
         );
       }
-    });
+    };
+    noopFetch();
   }, []);
 
   return (

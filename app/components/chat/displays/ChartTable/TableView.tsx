@@ -16,6 +16,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { DashboardContext } from "@/app/components/contexts/DashboardContext";
 import DataTable from "@/app/components/explorer/DataTable";
 
@@ -31,6 +40,8 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
   const [isCloseHovered, setIsCloseHovered] = useState(false);
   const [isAddHovered, setIsAddHovered] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [dashboardTitle, setDashboardTitle] = useState("");
 
   const { dashboards, addTableToDashboard, createDashboard } =
     useContext(DashboardContext);
@@ -199,9 +210,9 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
                   {dashboards.map((dashboard) => (
                     <DropdownMenuItem
                       key={dashboard.id}
-                      onClick={() => {
+                      onClick={async () => {
                         if (selectedColumns.length > 0) {
-                          addTableToDashboard(dashboard.id, {
+                          await addTableToDashboard(dashboard.id, {
                             payload,
                             columns: selectedColumns,
                           });
@@ -218,13 +229,10 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
               ) : null}
               <DropdownMenuItem
                 onClick={() => {
-                  const newDashboard = createDashboard();
-                  if (selectedColumns.length > 0) {
-                    addTableToDashboard(newDashboard.id, {
-                      payload,
-                      columns: selectedColumns,
-                    });
-                  }
+                  setDashboardTitle("");
+                  setTimeout(() => {
+                    setCreateDialogOpen(true);
+                  }, 100);
                 }}
                 disabled={selectedColumns.length === 0}
               >
@@ -341,6 +349,66 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
           </div>
         )}
       </motion.div>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Create Dashboard</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={dashboardTitle}
+              onChange={(e) => setDashboardTitle(e.target.value)}
+              placeholder="Dashboard name"
+              maxLength={200}
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && dashboardTitle.trim()) {
+                  e.preventDefault();
+                  const newDashboard = await createDashboard(dashboardTitle.trim());
+                  setCreateDialogOpen(false);
+                  setDashboardTitle("");
+                  if (selectedColumns.length > 0) {
+                    await addTableToDashboard(newDashboard.id, {
+                      payload,
+                      columns: selectedColumns,
+                    }, newDashboard);
+                  }
+                } else if (e.key === "Escape") {
+                  setCreateDialogOpen(false);
+                  setDashboardTitle("");
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setCreateDialogOpen(false);
+              setDashboardTitle("");
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              if (dashboardTitle.trim()) {
+                const newDashboard = await createDashboard(dashboardTitle.trim());
+                setCreateDialogOpen(false);
+                setDashboardTitle("");
+                if (selectedColumns.length > 0) {
+                  await addTableToDashboard(newDashboard.id, {
+                    payload,
+                    columns: selectedColumns,
+                  }, newDashboard);
+                }
+              }
+            }} disabled={!dashboardTitle.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

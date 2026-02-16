@@ -34,6 +34,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import GridLayout, { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 
@@ -437,6 +446,82 @@ const DashboardChartCard: React.FC<DashboardChartCardProps> = ({
   );
 };
 
+const CreateDashboardButton: React.FC = () => {
+  const { createDashboard } = useContext(DashboardContext);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [dashboardTitle, setDashboardTitle] = useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleCreateClick = () => {
+    setDashboardTitle("");
+    setTimeout(() => {
+      setCreateDialogOpen(true);
+    }, 100);
+  };
+
+  const handleCreateConfirm = async () => {
+    if (dashboardTitle.trim()) {
+      await createDashboard(dashboardTitle.trim());
+      inputRef.current?.blur();
+      setCreateDialogOpen(false);
+      setDashboardTitle("");
+    }
+  };
+
+  const handleCreateCancel = () => {
+    inputRef.current?.blur();
+    setCreateDialogOpen(false);
+    setDashboardTitle("");
+  };
+
+  return (
+    <>
+      <Button
+        onClick={handleCreateClick}
+        className="bg-accent/10 hover:bg-accent/20 text-accent border border-accent"
+      >
+        Create Dashboard
+      </Button>
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent onCloseAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Create Dashboard</DialogTitle>
+            <DialogDescription>
+              Enter a name for your new dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              ref={inputRef}
+              value={dashboardTitle}
+              onChange={(e) => setDashboardTitle(e.target.value)}
+              placeholder="Dashboard name"
+              maxLength={200}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleCreateConfirm();
+                } else if (e.key === "Escape") {
+                  handleCreateCancel();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCreateCancel}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateConfirm} disabled={!dashboardTitle.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 const DashboardsPage: React.FC = () => {
   const {
     dashboards,
@@ -447,7 +532,6 @@ const DashboardsPage: React.FC = () => {
     updateChartType,
     updateDashboardLayout,
     toggleDashboardLock,
-    createDashboard,
   } = useContext(DashboardContext);
 
   const currentDashboardData = getCurrentDashboardData();
@@ -564,17 +648,17 @@ const DashboardsPage: React.FC = () => {
   const isLocked = currentDashboardData?.isLocked || false;
 
   const handleLayoutChange = useCallback(
-    (newLayout: Layout[]) => {
+    async (newLayout: Layout[]) => {
       if (currentDashboard && !isLocked) {
-        updateDashboardLayout(currentDashboard, newLayout);
+        await updateDashboardLayout(currentDashboard, newLayout);
       }
     },
     [currentDashboard, isLocked, updateDashboardLayout]
   );
 
-  const handleToggleLock = useCallback(() => {
+  const handleToggleLock = useCallback(async () => {
     if (currentDashboard) {
-      toggleDashboardLock(currentDashboard);
+      await toggleDashboardLock(currentDashboard);
     }
   }, [currentDashboard, toggleDashboardLock]);
 
@@ -597,12 +681,7 @@ const DashboardsPage: React.FC = () => {
               : "Select a dashboard from the sidebar to view its charts."}
           </p>
           {dashboards.length === 0 && (
-            <Button
-              onClick={createDashboard}
-              className="bg-accent/10 hover:bg-accent/20 text-accent border border-accent"
-            >
-              Create Dashboard
-            </Button>
+            <CreateDashboardButton />
           )}
         </motion.div>
       </div>

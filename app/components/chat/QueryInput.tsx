@@ -132,7 +132,8 @@ const QueryInput: React.FC<QueryInputProps> = ({
             }}
           />
           <div className="flex justify-end gap-1 w-full">
-            {process.env.NODE_ENV === "development" && (
+            {/* Icons hidden but components/logic kept intact - can be re-enabled by removing 'false &&' */}
+            {false && process.env.NODE_ENV === "development" && (
               <Button
                 variant="ghost"
                 size={"icon"}
@@ -148,7 +149,7 @@ const QueryInput: React.FC<QueryInputProps> = ({
                 <RiFlowChart size={16} />
               </Button>
             )}
-            {query_length > 0 && (
+            {false && query_length > 0 && (
               <Button
                 variant="ghost"
                 size={"icon"}
@@ -157,7 +158,7 @@ const QueryInput: React.FC<QueryInputProps> = ({
                 <TbSettings size={16} />
               </Button>
             )}
-            <CollectionSelection />
+            {false && <CollectionSelection />}
             <Button
               variant="ghost"
               size={"icon"}

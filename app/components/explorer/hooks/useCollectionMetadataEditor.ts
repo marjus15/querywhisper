@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { patchCollectionMetadata } from "@/app/api/patchCollectionMetadata";
 import { Collection, MetadataNamedVector } from "@/app/types/objects";
 import { MetadataPayload } from "@/app/types/payloads";
 
@@ -84,18 +83,9 @@ export function useCollectionMetadataEditor({
   const hasSummaryChanges =
     summaryDraft !== (collectionMetadata?.metadata.summary || "");
 
+  // Collection metadata patch endpoint not available on current backend
   const handleSaveSummary = async () => {
-    if (!collection || !id) return;
-    setSavingSummary(true);
-    try {
-      await patchCollectionMetadata(id, collection.name, {
-        summary: summaryDraft,
-      });
-      setEditingSummary(false);
-      await reloadMetadata();
-    } finally {
-      setSavingSummary(false);
-    }
+    setSavingSummary(false);
   };
 
   // Mappings editing
@@ -192,18 +182,9 @@ export function useCollectionMetadataEditor({
     JSON.stringify(mappingsDraft) !==
     JSON.stringify(collectionMetadata?.metadata.mappings || {});
 
+  // Collection metadata patch endpoint not available on current backend
   const handleSaveMappings = async () => {
-    if (!collection || !id) return;
-    setSavingMappings(true);
-    try {
-      await patchCollectionMetadata(id, collection.name, {
-        mappings: mappingsDraft,
-      });
-      setEditingMappings(false);
-      await reloadMetadata();
-    } finally {
-      setSavingMappings(false);
-    }
+    setSavingMappings(false);
   };
 
   // Named vectors editing
@@ -237,27 +218,9 @@ export function useCollectionMetadataEditor({
     JSON.stringify(namedVectorsDraft) !==
     JSON.stringify(collectionMetadata?.metadata.named_vectors || {});
 
+  // Collection metadata patch endpoint not available on current backend
   const handleSaveNamedVectors = async () => {
-    if (!collection || !id) return;
-    setSavingNamedVectors(true);
-    try {
-      // Convert the object format to array format for the API
-      const namedVectorsArray = Object.entries(namedVectorsDraft).map(
-        ([name, vector]) => ({
-          name,
-          description: vector.description,
-          enabled: vector.enabled,
-        })
-      );
-
-      await patchCollectionMetadata(id, collection.name, {
-        named_vectors: namedVectorsArray,
-      });
-      setEditingNamedVectors(false);
-      await reloadMetadata();
-    } finally {
-      setSavingNamedVectors(false);
-    }
+    setSavingNamedVectors(false);
   };
 
   return {

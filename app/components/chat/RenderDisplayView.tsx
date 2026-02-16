@@ -16,7 +16,6 @@ import TicketView from "./displays/Ticket/TicketView";
 
 import { MdOutlineDataArray } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
-import { getObject } from "@/app/api/getObject";
 import { SessionContext } from "../contexts/SessionContext";
 import { CollectionDataPayload } from "@/app/types/payloads";
 import DataCell from "@/app/components/explorer/components/DataCell";
@@ -74,15 +73,8 @@ const RenderDisplayView: React.FC<RenderDisplayViewProps> = ({
     };
   }, []);
 
+  // Object fetch endpoint not available on current backend
   const fetchData = async () => {
-    setLoading(true);
-    if (!id || !payload.uuid || !currentCollectionName) return;
-    const data = await getObject(id, currentCollectionName, payload.uuid);
-    if (data.error) {
-      showErrorToast("Error fetching data", data.error);
-    } else {
-      setData(data);
-    }
     setLoading(false);
   };
 

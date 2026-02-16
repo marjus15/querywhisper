@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { BackendConfig } from "@/app/types/objects";
 import { isEqual } from "lodash";
-import { getTreeConfig } from "@/app/api/getTreeConfig";
-import { saveTreeConfig } from "@/app/api/saveTreeConfig";
-import { newTreeConfig } from "@/app/api/newTreeConfig";
 
 /**
  * Custom hook for managing tree-specific configuration state
@@ -22,52 +19,17 @@ export function useTreeConfigState(
   const [changedConfig, setChangedConfig] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch tree configuration from API
+  // Tree config endpoint not available on current backend
   const fetchTreeConfig = async () => {
-    if (!user_id || !conversation_id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const data = await getTreeConfig(user_id, conversation_id);
-      if (data.config) {
-        setOriginalConfig(data.config);
-        setCurrentConfig({ ...data.config });
-        setChangedConfig(false);
-      }
-    } catch (error) {
-      console.error("Failed to fetch tree config:", error);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
-  // Save current configuration
+  // Tree config save endpoint not available on current backend
   const handleSaveConfig = async () => {
-    if (currentConfig) {
-      const data = await saveTreeConfig(
-        user_id,
-        conversation_id,
-        currentConfig
-      );
-      if (data.config) {
-        setOriginalConfig({ ...data.config });
-        setCurrentConfig({ ...data.config });
-        setChangedConfig(false);
-      }
-    }
   };
 
-  // Reset configuration to default
+  // Tree config reset endpoint not available on current backend
   const resetConfig = async () => {
-    const data = await newTreeConfig(user_id, conversation_id);
-    if (data.config) {
-      setOriginalConfig({ ...data.config });
-      setCurrentConfig({ ...data.config });
-      setChangedConfig(false);
-    }
   };
 
   // Cancel changes and revert to original

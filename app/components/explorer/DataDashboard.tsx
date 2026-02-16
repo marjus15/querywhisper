@@ -33,7 +33,6 @@ import { IoIosRefresh } from "react-icons/io";
 import { IoChevronDown, IoChevronUp } from "react-icons/io5";
 import { RouterContext } from "../contexts/RouterContext";
 import { ProcessingContext } from "../contexts/ProcessingContext";
-import { deleteAllCollectionMetadata } from "@/app/api/deleteAllCollectionMetadata";
 import DeleteButton from "../navigation/DeleteButton";
 import { motion } from "framer-motion";
 
@@ -127,11 +126,7 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDeleteAllCollectionMetadata = async () => {
-    const response = await deleteAllCollectionMetadata(id ?? "");
-    if (response.error) {
-      showErrorToast("Error deleting all collection metadata", response.error);
-    }
-    fetchCollections();
+    // Collection metadata endpoint not available on current backend
   };
 
   return (
