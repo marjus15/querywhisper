@@ -291,6 +291,7 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
                             payload,
                             xAxis: selectedXAxis,
                             yAxis: selectedYAxis,
+                            savedQuery: payload[0]?.code?.text ?? "",
                           });
                         }
                       }}
@@ -521,6 +522,7 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
                       payload,
                       xAxis: selectedXAxis,
                       yAxis: selectedYAxis,
+                      savedQuery: payload[0]?.code?.text ?? "",
                     }, newDashboard);
                   }
                 } else if (e.key === "Escape") {
@@ -548,6 +550,7 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
                     payload,
                     xAxis: selectedXAxis,
                     yAxis: selectedYAxis,
+                    savedQuery: payload[0]?.code?.text ?? "",
                   }, newDashboard);
                 }
               }

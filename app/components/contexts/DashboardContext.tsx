@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { ResultPayload } from "@/app/types/chat";
 import { ToastContext } from "./ToastContext";
-import { ApiContext } from "./ApiContext";
+import { ApiContext, QueryResponse } from "./ApiContext";
 import { Layout } from "react-grid-layout";
 
 // Types
@@ -17,6 +17,7 @@ export interface DashboardChart {
   addedAt: string; // ISO string for JSON serialization
   title?: string;
   chartType?: ChartType; // Default to "bar" if not specified
+  savedQuery?: string; // SQL to re-run when refreshing dashboard
 }
 
 export interface DashboardTable {
@@ -25,6 +26,7 @@ export interface DashboardTable {
   columns: string[];
   addedAt: string; // ISO string for JSON serialization
   title?: string;
+  savedQuery?: string; // SQL to re-run when refreshing dashboard
 }
 
 export interface Dashboard {
@@ -72,6 +74,7 @@ interface DashboardContextType {
   getCurrentDashboardData: () => Dashboard | undefined;
   updateDashboardLayout: (dashboardId: string, layouts: Layout[]) => void;
   toggleDashboardLock: (dashboardId: string) => void;
+  refreshDashboardData: (dashboardId: string) => Promise<void>;
 }
 
 export const DashboardContext = createContext<DashboardContextType>({
@@ -90,6 +93,7 @@ export const DashboardContext = createContext<DashboardContextType>({
   getCurrentDashboardData: () => undefined,
   updateDashboardLayout: () => {},
   toggleDashboardLock: () => {},
+  refreshDashboardData: async () => {},
 });
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -102,7 +106,18 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   const [, setIsLoading] = useState(false);
 
   const { showSuccessToast, showErrorToast } = useContext(ToastContext);
-  const { getDashboards, createDashboard: createDashboardApi, updateDashboard: updateDashboardApi, deleteDashboard: deleteDashboardApi } = useContext(ApiContext);
+  const { getDashboards, createDashboard: createDashboardApi, updateDashboard: updateDashboardApi, deleteDashboard: deleteDashboardApi, executeQuery } = useContext(ApiContext);
+
+  /** Build ResultPayload from /query response for dashboard widget payload */
+  const queryResponseToResultPayload = useCallback((response: QueryResponse, savedQuery: string): ResultPayload => {
+    const data = response.success && response.data ? response.data : [];
+    return {
+      type: "table",
+      metadata: {},
+      code: { language: "sql", title: "", text: savedQuery },
+      objects: data as ResultPayload["objects"],
+    };
+  }, []);
 
   // Function to reload dashboards from API
   const reloadDashboards = useCallback(async () => {
@@ -118,12 +133,24 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Helper function to convert API dashboard format to frontend format
   const convertApiDashboardToFrontend = (apiDashboard: ApiDashboardShape): Dashboard => {
+    const charts = ((apiDashboard.data?.charts || []) as DashboardChart[]).map((c) => {
+      if (!c.savedQuery && c.payload?.[0]?.code?.text) {
+        return { ...c, savedQuery: c.payload[0].code.text };
+      }
+      return c;
+    });
+    const tables = ((apiDashboard.data?.tables || []) as DashboardTable[]).map((t) => {
+      if (!t.savedQuery && t.payload?.[0]?.code?.text) {
+        return { ...t, savedQuery: t.payload[0].code.text };
+      }
+      return t;
+    });
     return {
       id: apiDashboard.id,
       title: apiDashboard.title,
       createdAt: apiDashboard.created_at,
-      charts: (apiDashboard.data?.charts || []) as DashboardChart[],
-      tables: (apiDashboard.data?.tables || []) as DashboardTable[],
+      charts,
+      tables,
       layouts: (apiDashboard.data?.layouts || []) as Layout[],
       isLocked: apiDashboard.is_locked || false,
     };
@@ -501,6 +528,72 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
     [dashboards, updateDashboardApi, showErrorToast]
   );
 
+  const refreshDashboardData = useCallback(
+    async (dashboardId: string) => {
+      const dashboard = dashboards.find((d) => d.id === dashboardId);
+      if (!dashboard) return;
+
+      const updatedCharts: DashboardChart[] = await Promise.all(
+        (dashboard.charts || []).map(async (chart) => {
+          const sql = chart.savedQuery?.trim();
+          if (!sql) return chart;
+          try {
+            const res = await executeQuery(sql);
+            if (res.success) {
+              return { ...chart, payload: [queryResponseToResultPayload(res, sql)] };
+            }
+            showErrorToast("Refresh failed", res.error ?? "Query failed");
+            return chart;
+          } catch {
+            showErrorToast("Refresh failed", "Could not refresh chart data");
+            return chart;
+          }
+        })
+      );
+
+      const updatedTables: DashboardTable[] = await Promise.all(
+        (dashboard.tables || []).map(async (table) => {
+          const sql = table.savedQuery?.trim();
+          if (!sql) return table;
+          try {
+            const res = await executeQuery(sql);
+            if (res.success) {
+              return { ...table, payload: [queryResponseToResultPayload(res, sql)] };
+            }
+            showErrorToast("Refresh failed", res.error ?? "Query failed");
+            return table;
+          } catch {
+            showErrorToast("Refresh failed", "Could not refresh table data");
+            return table;
+          }
+        })
+      );
+
+      const hasUpdates =
+        updatedCharts.some((c, i) => c !== dashboard.charts?.[i]) ||
+        updatedTables.some((t, i) => t !== dashboard.tables?.[i]);
+      if (!hasUpdates) return;
+
+      try {
+        const updatedDashboard: Dashboard = {
+          ...dashboard,
+          charts: updatedCharts,
+          tables: updatedTables,
+        };
+        const apiData = convertFrontendDashboardToApi(updatedDashboard);
+        const apiResponse = await updateDashboardApi(dashboardId, { data: apiData.data });
+        const converted = convertApiDashboardToFrontend(apiResponse);
+        setDashboards((prev) =>
+          prev.map((d) => (d.id === dashboardId ? converted : d))
+        );
+      } catch (error) {
+        console.error("Failed to save refreshed dashboard data:", error);
+        showErrorToast("Error", "Failed to save refreshed data");
+      }
+    },
+    [dashboards, executeQuery, queryResponseToResultPayload, updateDashboardApi, showErrorToast]
+  );
+
   const getDashboardById = useCallback(
     (id: string): Dashboard | undefined => {
       return dashboards.find((d) => d.id === id);
@@ -531,6 +624,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
         getCurrentDashboardData,
         updateDashboardLayout,
         toggleDashboardLock,
+        refreshDashboardData,
       }}
     >
       {children}

@@ -216,6 +216,7 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
                           await addTableToDashboard(dashboard.id, {
                             payload,
                             columns: selectedColumns,
+                            savedQuery: payload[0]?.code?.text ?? "",
                           });
                         }
                       }}
@@ -375,6 +376,7 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
                     await addTableToDashboard(newDashboard.id, {
                       payload,
                       columns: selectedColumns,
+                      savedQuery: payload[0]?.code?.text ?? "",
                     }, newDashboard);
                   }
                 } else if (e.key === "Escape") {
@@ -401,6 +403,7 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
                   await addTableToDashboard(newDashboard.id, {
                     payload,
                     columns: selectedColumns,
+                    savedQuery: payload[0]?.code?.text ?? "",
                   }, newDashboard);
                 }
               }

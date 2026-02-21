@@ -4,7 +4,7 @@ import React, { useContext, useMemo, useCallback, useEffect, useState } from "re
 import { DashboardContext, DashboardChart, DashboardTable, ChartType } from "../components/contexts/DashboardContext";
 import { MdOutlineDashboard } from "react-icons/md";
 import { GoTrash } from "react-icons/go";
-import { IoBarChart } from "react-icons/io5";
+import { IoBarChart, IoRefresh } from "react-icons/io5";
 import { BsTable } from "react-icons/bs";
 import { AiOutlineLineChart, AiOutlineAreaChart, AiOutlinePieChart } from "react-icons/ai";
 import { FiLock, FiUnlock } from "react-icons/fi";
@@ -546,11 +546,41 @@ const DashboardsPage: React.FC = () => {
     updateChartType,
     updateDashboardLayout,
     toggleDashboardLock,
+    refreshDashboardData,
   } = useContext(DashboardContext);
 
   const currentDashboardData = getCurrentDashboardData();
   const [containerWidth, setContainerWidth] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const lastRefreshedDashboardId = React.useRef<string | null>(null);
+
+  // Refresh widget data from saved queries when user opens/selects this dashboard (once per selection)
+  useEffect(() => {
+    if (!currentDashboard) return;
+    const data = getCurrentDashboardData();
+    if (!data) return;
+    const hasRefreshableWidgets =
+      (data.charts?.some((c) => c.savedQuery?.trim()) ||
+        data.tables?.some((t) => t.savedQuery?.trim())) ?? false;
+    if (!hasRefreshableWidgets) return;
+    if (lastRefreshedDashboardId.current === currentDashboard) return;
+    lastRefreshedDashboardId.current = currentDashboard;
+
+    let cancelled = false;
+    const run = async () => {
+      setIsRefreshing(true);
+      try {
+        await refreshDashboardData(currentDashboard);
+      } finally {
+        if (!cancelled) setIsRefreshing(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDashboard, getCurrentDashboardData, refreshDashboardData]);
 
   // Get container width for responsive grid
   useEffect(() => {
@@ -774,33 +804,56 @@ const DashboardsPage: React.FC = () => {
               {currentDashboardData.title}
             </h1>
             <span className="text-sm text-secondary">
-              {getItemCountString()}
+              {isRefreshing ? "Refreshing data…" : getItemCountString()}
             </span>
           </div>
         </div>
         
-        {/* Lock/Unlock Button */}
-        <Button
-          variant="ghost"
-          onClick={handleToggleLock}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
-            isLocked
-              ? "bg-accent/10 text-accent border border-accent hover:bg-accent/20"
-              : "bg-secondary/10 text-secondary border border-secondary/30 hover:bg-secondary/20"
-          }`}
-        >
-          {isLocked ? (
-            <>
-              <FiLock size={16} />
-              <span className="text-sm">Locked</span>
-            </>
-          ) : (
-            <>
-              <FiUnlock size={16} />
-              <span className="text-sm">Unlocked</span>
-            </>
+        <div className="flex items-center gap-2">
+          {/* Refresh data from saved queries */}
+          {(currentDashboardData.charts?.some((c) => c.savedQuery?.trim()) ||
+            currentDashboardData.tables?.some((t) => t.savedQuery?.trim())) && (
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                if (!currentDashboard || isRefreshing) return;
+                setIsRefreshing(true);
+                try {
+                  await refreshDashboardData(currentDashboard);
+                } finally {
+                  setIsRefreshing(false);
+                }
+              }}
+              disabled={isRefreshing}
+              className="flex items-center gap-2 px-4 py-2 rounded-md bg-highlight/10 text-highlight border border-highlight/20 hover:bg-highlight/20"
+            >
+              <IoRefresh size={16} className={isRefreshing ? "animate-spin" : ""} />
+              <span className="text-sm">{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+            </Button>
           )}
-        </Button>
+          {/* Lock/Unlock Button */}
+          <Button
+            variant="ghost"
+            onClick={handleToggleLock}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+              isLocked
+                ? "bg-accent/10 text-accent border border-accent hover:bg-accent/20"
+                : "bg-secondary/10 text-secondary border border-secondary/30 hover:bg-secondary/20"
+            }`}
+          >
+            {isLocked ? (
+              <>
+                <FiLock size={16} />
+                <span className="text-sm">Locked</span>
+              </>
+            ) : (
+              <>
+                <FiUnlock size={16} />
+                <span className="text-sm">Unlocked</span>
+              </>
+            )}
+          </Button>
+        </div>
       </motion.div>
 
       {/* Grid hint when unlocked - Fixed */}
