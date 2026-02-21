@@ -52,9 +52,7 @@ export default function ChatPage() {
     addTreeToConversation,
     addQueryToConversation,
     currentConversation,
-    setCurrentConversation,
     conversations,
-    setConversations,
     updateFeedbackForQuery,
     loadingConversation,
     addConversation,
@@ -154,10 +152,6 @@ export default function ChatPage() {
       addTreeToConversation(_conversation.id);
       addQueryToConversation(_conversation.id, trimmedQuery, query_id);
     }
-  };
-
-  const selectChat = () => {
-    setMode("chat");
   };
 
   useEffect(() => {

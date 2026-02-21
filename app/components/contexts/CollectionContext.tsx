@@ -25,7 +25,7 @@ export const CollectionProvider = ({
   children: React.ReactNode;
 }) => {
   const { id, fetchCollectionFlag, initialized } = useContext(SessionContext);
-  const { showErrorToast, showSuccessToast } = useContext(ToastContext);
+  const { showSuccessToast } = useContext(ToastContext);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
 
@@ -61,6 +61,7 @@ export const CollectionProvider = ({
     showSuccessToast(`${collections.length} Collections Loaded`);
   };
 
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- param reserved for future backend */
   const deleteCollection = async (_collection_name: string) => {
     // Collection metadata endpoint not available on current backend
   };

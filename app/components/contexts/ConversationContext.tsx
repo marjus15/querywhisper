@@ -972,12 +972,14 @@ export const ConversationProvider = ({
     }
   };
 
+  /* eslint-disable @typescript-eslint/no-unused-vars -- API params reserved for future backend */
   const handleAddFeedback = async (
     _user_id: string,
     _conversation_id: string,
     _query_id: string,
     _feedback: number
   ) => {
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     // Feedback endpoint not available on current backend
     return { error: null } as BasePayload;
   };

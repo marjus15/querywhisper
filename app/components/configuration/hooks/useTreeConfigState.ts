@@ -10,7 +10,8 @@ export function useTreeConfigState(
   user_id: string | null | undefined,
   conversation_id: string | null | undefined
 ) {
-  const [originalConfig, setOriginalConfig] = useState<BackendConfig | null>(
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- setter reserved for future backend */
+  const [originalConfig, _setOriginalConfig] = useState<BackendConfig | null>(
     null
   );
   const [currentConfig, setCurrentConfig] = useState<BackendConfig | null>(

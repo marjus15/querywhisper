@@ -12,6 +12,13 @@ import { ConversationContext } from "./ConversationContext";
 import { ToastContext } from "./ToastContext";
 import { ApiContext } from "./ApiContext";
 
+interface QueryResponseShape {
+  data?: unknown[];
+  row_count?: number;
+  columns?: string[];
+  execution_time_ms?: number;
+}
+
 export const SocketContext = createContext<{
   socketOnline: boolean;
   sendQuery: (
@@ -28,11 +35,8 @@ export const SocketContext = createContext<{
 });
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const {
-    setConversationStatus,
-    handleWebsocketMessage,
-    addQueryToConversation,
-  } = useContext(ConversationContext);
+  const { setConversationStatus, handleWebsocketMessage } =
+    useContext(ConversationContext);
 
   const { showErrorToast, showSuccessToast } = useContext(ToastContext);
   const { askQuestion, testConnection } = useContext(ApiContext);
@@ -82,6 +86,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     hasShownInitialConnection,
   ]);
 
+  /* eslint-disable @typescript-eslint/no-unused-vars -- route/mimick reserved for future backend */
   const sendQuery = async (
     user_id: string,
     query: string,
@@ -90,6 +95,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     route: string = "",
     mimick: boolean = false
   ) => {
+    /* eslint-enable @typescript-eslint/no-unused-vars */
     try {
       setConversationStatus("Thinking...", conversation_id);
 
@@ -179,7 +185,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const formatResponseContent = (response: any): string => {
+  const formatResponseContent = (response: QueryResponseShape): string => {
     if (!response.data || response.data.length === 0) {
       return "No results found for your query.";
     }
@@ -189,14 +195,16 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     let content = `Found ${rowCount} result${rowCount !== 1 ? "s" : ""}:\n\n`;
 
     // Add a simple table format
-    if (response.columns && response.data.length > 0) {
-      content += `**${response.columns.join(" | ")}**\n`;
-      content += `${response.columns.map(() => "---").join(" | ")}\n`;
+    const columns = response.columns;
+    if (columns && response.data.length > 0) {
+      content += `**${columns.join(" | ")}**\n`;
+      content += `${columns.map(() => "---").join(" | ")}\n`;
 
       // Show first few rows
       const displayRows = response.data.slice(0, 10);
-      displayRows.forEach((row: any) => {
-        const values = response.columns.map((col: string) => {
+      displayRows.forEach((item) => {
+        const row = item as Record<string, unknown>;
+        const values = columns.map((col: string) => {
           const value = row[col];
           return value !== null && value !== undefined ? String(value) : "";
         });

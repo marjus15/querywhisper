@@ -35,12 +35,14 @@ const RenderDisplayView: React.FC<RenderDisplayViewProps> = ({
   type,
   handleViewChange,
 }) => {
-  const { showErrorToast } = useContext(ToastContext);
+  /* eslint-disable @typescript-eslint/no-unused-vars -- reserved for future use */
+  const { showErrorToast: _showErrorToast } = useContext(ToastContext);
   const [showRawData, setShowRawData] = useState(false);
   const { currentCollectionName } = useContext(ChatContext);
-  const { id } = useContext(SessionContext);
+  const { id: _id } = useContext(SessionContext);
 
-  const [data, setData] = useState<CollectionDataPayload | null>(null);
+  const [data, _setData] = useState<CollectionDataPayload | null>(null);
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   const [loading, setLoading] = useState(false);
   const [isRawButtonHovered, setIsRawButtonHovered] = useState(false);
   const [isCloseButtonHovered, setIsCloseButtonHovered] = useState(false);

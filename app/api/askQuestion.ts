@@ -10,7 +10,7 @@ export interface AskQuestionResponse {
   question: string;
   session_id?: string;
   generated_sql?: string;
-  data?: any[];
+  data?: Record<string, unknown>[];
   columns?: string[];
   row_count?: number;
   execution_time_ms?: number;

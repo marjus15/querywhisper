@@ -21,7 +21,6 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({
-  onSuccess,
   onSwitchToLogin,
 }: RegisterFormProps) {
   const [email, setEmail] = useState("");
@@ -44,7 +43,7 @@ export function RegisterForm({
       } else {
         setSuccess(true);
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -56,7 +55,7 @@ export function RegisterForm({
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Check Your Email</CardTitle>
-          <CardDescription>We've sent you a confirmation link</CardDescription>
+          <CardDescription>We&apos;ve sent you a confirmation link</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>

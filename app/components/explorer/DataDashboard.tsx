@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
     loadingCollections,
   } = useContext(CollectionContext);
   const { id } = useContext(SessionContext);
-  const { currentToasts, showErrorToast } = useContext(ToastContext);
+  const { currentToasts } = useContext(ToastContext);
   const { triggerAnalysis } = useContext(ProcessingContext);
   const { changePage } = useContext(RouterContext);
 

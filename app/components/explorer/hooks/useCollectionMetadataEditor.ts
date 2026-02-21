@@ -62,13 +62,15 @@ export interface UseCollectionMetadataEditorReturn {
   handleSaveNamedVectors: () => Promise<void>;
 }
 
+/* eslint-disable @typescript-eslint/no-unused-vars -- params reserved for future use */
 export function useCollectionMetadataEditor({
-  collection,
-  id,
+  collection: _collection,
+  id: _id,
   collectionMetadata,
   collectionDataProperties,
-  reloadMetadata,
+  reloadMetadata: _reloadMetadata,
 }: UseCollectionMetadataEditorProps): UseCollectionMetadataEditorReturn {
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   // Summary editing
   const [editingSummary, setEditingSummary] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState("");

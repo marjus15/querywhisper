@@ -1,7 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
-import { host } from "../host";
+import { createContext, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 
 export interface AskRequest {
@@ -14,7 +13,7 @@ export interface AskResponse {
   question: string;
   session_id?: string;
   generated_sql?: string;
-  data?: any[];
+  data?: Record<string, unknown>[];
   columns?: string[];
   row_count?: number;
   execution_time_ms?: number;
@@ -30,7 +29,7 @@ export interface QueryRequest {
 
 export interface QueryResponse {
   success: boolean;
-  data?: any[];
+  data?: Record<string, unknown>[];
   columns?: string[];
   error?: string;
 }
@@ -39,9 +38,9 @@ export interface Dashboard {
   id: string;
   title: string;
   data: {
-    charts: any[];
-    tables: any[];
-    layouts?: any[];
+    charts: unknown[];
+    tables: unknown[];
+    layouts?: unknown[];
   };
   is_locked?: boolean;
   created_at: string;
@@ -51,9 +50,9 @@ export interface Dashboard {
 export interface DashboardCreateRequest {
   title: string;
   data?: {
-    charts: any[];
-    tables: any[];
-    layouts?: any[];
+    charts: unknown[];
+    tables: unknown[];
+    layouts?: unknown[];
   };
   is_locked?: boolean;
 }
@@ -61,9 +60,9 @@ export interface DashboardCreateRequest {
 export interface DashboardUpdateRequest {
   title?: string;
   data?: {
-    charts: any[];
-    tables: any[];
-    layouts?: any[];
+    charts: unknown[];
+    tables: unknown[];
+    layouts?: unknown[];
   };
   is_locked?: boolean;
 }
@@ -161,7 +160,7 @@ export const ApiProvider = ({ children }: { children: React.ReactNode }) => {
 
   const testConnection = async (): Promise<boolean> => {
     try {
-      const data = await apiClient.get("/test");
+      const data = await apiClient.get<{ status: string }>("/test");
       return data.status === "success";
     } catch (error) {
       console.error("Error testing connection:", error);

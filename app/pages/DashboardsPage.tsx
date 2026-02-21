@@ -75,13 +75,25 @@ const ITEM_WIDTH = 6; // Half of grid (2 columns layout)
 const CHART_HEIGHT = 4; // 4 rows = 320px
 const TABLE_HEIGHT = 4;
 
+interface DashboardsTooltipEntry {
+  dataKey?: string;
+  value?: string | number;
+  color?: string;
+}
+
+interface DashboardsTooltipProps {
+  active?: boolean;
+  payload?: DashboardsTooltipEntry[];
+  label?: string;
+}
+
 // Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: DashboardsTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background_alt border border-foreground_alt rounded-lg p-3">
         <p className="text-sm text-primary font-medium">{`${label}`}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry: DashboardsTooltipEntry, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
             {`${entry.dataKey}: ${typeof entry.value === "number" ? entry.value.toLocaleString() : entry.value}`}
           </p>
@@ -117,10 +129,11 @@ const DashboardTableCard: React.FC<DashboardTableCardProps> = ({
     if (!data || !Array.isArray(data)) return [];
 
     // Filter data to only include selected columns
-    return data.map((item: any) => {
-      const filtered: any = {};
+    return data.map((item) => {
+      const row = item as Record<string, unknown>;
+      const filtered: Record<string, unknown> = {};
       table.columns.forEach((col) => {
-        filtered[col] = item[col];
+        filtered[col] = row[col];
       });
       return filtered;
     });
@@ -183,7 +196,7 @@ const DashboardTableCard: React.FC<DashboardTableCardProps> = ({
               </tr>
             </thead>
             <tbody>
-              {tableData.slice(0, 10).map((row: any, rowIndex: number) => (
+              {tableData.slice(0, 10).map((row, rowIndex: number) => (
                 <tr
                   key={rowIndex}
                   className={`hover:bg-foreground_alt ${
@@ -238,12 +251,13 @@ const DashboardChartCard: React.FC<DashboardChartCardProps> = ({
     const data = chart.payload[0]?.objects;
     if (!data || !Array.isArray(data)) return [];
 
-    return data.map((item: any) => {
-      const transformed: any = {
-        [chart.xAxis]: item[chart.xAxis] || "N/A",
+    return data.map((item) => {
+      const row = item as Record<string, unknown>;
+      const transformed: Record<string, unknown> = {
+        [chart.xAxis]: row[chart.xAxis] || "N/A",
       };
       chart.yAxis.forEach((yCol) => {
-        transformed[yCol] = typeof item[yCol] === "number" ? item[yCol] : 0;
+        transformed[yCol] = typeof row[yCol] === "number" ? row[yCol] : 0;
       });
       return transformed;
     });
@@ -253,9 +267,9 @@ const DashboardChartCard: React.FC<DashboardChartCardProps> = ({
   const pieData = useMemo(() => {
     if (currentChartType !== "pie" || transformedData.length === 0) return [];
     
-    return transformedData.map((item: any) => ({
+    return transformedData.map((item) => ({
       name: item[chart.xAxis],
-      value: chart.yAxis.reduce((sum, yCol) => sum + (item[yCol] || 0), 0),
+      value: chart.yAxis.reduce((sum, yCol) => sum + ((item[yCol] as number) || 0), 0),
     }));
   }, [transformedData, chart.xAxis, chart.yAxis, currentChartType]);
 
@@ -798,7 +812,7 @@ const DashboardsPage: React.FC = () => {
         >
           <RiDragMove2Fill size={16} className="text-highlight" />
           <span className="text-sm text-highlight">
-            Drag items to rearrange. Resize by dragging corners. Click "Locked" to save positions.
+            Drag items to rearrange. Resize by dragging corners. Click &quot;Locked&quot; to save positions.
           </span>
         </motion.div>
       )}

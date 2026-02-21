@@ -5,12 +5,7 @@ import { usePathname } from "next/navigation";
 import { initializeUser } from "@/app/api/initializeUser";
 import { UserConfig } from "@/app/types/objects";
 import { supabase } from "@/lib/supabase";
-import {
-  BasePayload,
-  ConfigListEntry,
-  ConfigPayload,
-  CorrectSettings,
-} from "@/app/types/payloads";
+import { ConfigListEntry, CorrectSettings } from "@/app/types/payloads";
 import { ToastContext } from "./ToastContext";
 import { useDeviceId } from "@/app/getDeviceId";
 
@@ -121,7 +116,8 @@ export const SessionProvider = ({
     useState<CorrectSettings | null>(null);
   const [loadingConfig, setLoadingConfig] = useState<boolean>(false);
   const [loadingConfigs, setLoadingConfigs] = useState<boolean>(false);
-  const [savingConfig, setSavingConfig] = useState<boolean>(false);
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- setter reserved for future backend */
+  const [savingConfig, _setSavingConfig] = useState<boolean>(false);
   const initialized = useRef(false);
   const [fetchCollectionFlag, setFetchCollectionFlag] =
     useState<boolean>(false);
@@ -160,7 +156,7 @@ export const SessionProvider = ({
     // });
 
     // Mock empty config list for now
-    const sortedConfigs: any[] = [];
+    const sortedConfigs: ConfigListEntry[] = [];
     setConfigIDs(sortedConfigs);
     setLoadingConfigs(false);
   };
@@ -229,6 +225,7 @@ export const SessionProvider = ({
     setShowRateLimitDialog(true);
   };
 
+  /* eslint-disable @typescript-eslint/no-unused-vars -- API params reserved for future backend */
   const updateConfig = async (
     _config: UserConfig,
     _setDefault: boolean = false
@@ -252,6 +249,7 @@ export const SessionProvider = ({
   ) => {
     // Config delete endpoint not available on current backend
   };
+  /* eslint-enable @typescript-eslint/no-unused-vars */
 
   return (
     <SessionContext.Provider

@@ -39,7 +39,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
       } else {
         onSuccess?.();
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ export function LoginForm({ onSuccess, onSwitchToRegister }: LoginFormProps) {
             onClick={onSwitchToRegister}
             className="text-sm"
           >
-            Don't have an account? Sign up
+            Don&apos;t have an account? Sign up
           </Button>
         </div>
       </CardContent>

@@ -165,7 +165,7 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [, setIsReady] = useState(false);
 
   const { showSuccessToast, showErrorToast } = useContext(ToastContext);
 

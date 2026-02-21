@@ -54,13 +54,26 @@ const COLORS = [
   "hsl(var(--error))",
 ];
 
+// Recharts tooltip payload entry
+interface TooltipEntry {
+  dataKey?: string;
+  value?: string | number;
+  color?: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string;
+}
+
 // Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-background_alt border border-foreground_alt rounded-lg p-3">
         <p className="text-sm text-primary font-medium">{`${label}`}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry: TooltipEntry, index: number) => (
           <p key={index} className="text-sm" style={{ color: entry.color }}>
             {`${entry.dataKey}: ${typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}`}
           </p>
@@ -83,7 +96,7 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
     useContext(DashboardContext);
 
   // Analyze the data to find suitable columns for visualization
-  const { chartData, columns, numericColumns, categoryColumns } = useMemo(() => {
+  const { chartData, numericColumns, categoryColumns } = useMemo(() => {
     if (!payload || payload.length === 0) {
       return { chartData: [], columns: [], numericColumns: [], categoryColumns: [] };
     }
@@ -95,7 +108,7 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
     }
 
     // Get all columns from the first object
-    const firstObj = data[0];
+    const firstObj = data[0] as Record<string, unknown>;
     if (typeof firstObj !== "object" || firstObj === null) {
       return { chartData: [], columns: [], numericColumns: [], categoryColumns: [] };
     }
@@ -144,12 +157,13 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
   const transformedData = useMemo(() => {
     if (!chartData || chartData.length === 0 || !selectedXAxis) return [];
 
-    return chartData.map((item: any) => {
-      const transformed: any = {
-        [selectedXAxis]: item[selectedXAxis] || "N/A",
+    return chartData.map((item) => {
+      const row = item as Record<string, unknown>;
+      const transformed: Record<string, unknown> = {
+        [selectedXAxis]: row[selectedXAxis] || "N/A",
       };
       selectedYAxis.forEach((yCol) => {
-        transformed[yCol] = typeof item[yCol] === "number" ? item[yCol] : 0;
+        transformed[yCol] = typeof row[yCol] === "number" ? row[yCol] : 0;
       });
       return transformed;
     });
@@ -393,7 +407,7 @@ const ChartView: React.FC<ChartViewProps> = ({ payload, handleViewChange }) => {
             Y-Axis (Values) - Select up to 3
           </span>
           <div className="flex flex-wrap gap-1">
-            {numericColumns.map((col, index) => (
+            {numericColumns.map((col) => (
               <Button
                 key={col}
                 variant="ghost"

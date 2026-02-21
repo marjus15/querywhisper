@@ -37,13 +37,13 @@ type ChartData = {
 export default function Home() {
   const { id } = useContext(SessionContext);
   const loading = useRef(false);
-  const [feedbackMetadata, setFeedbackMetadata] =
-    useState<FeedbackMetadata | null>(null);
+  const [feedbackMetadata] = useState<FeedbackMetadata | null>(null);
 
   const { changePage } = useContext(RouterContext);
 
   const [feedbackChartData, setFeedbackChartData] = useState<ChartData[]>([]);
 
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for future use */
   const convertToChartData = (metadata: FeedbackMetadata) => {
     if (!metadata) return;
 

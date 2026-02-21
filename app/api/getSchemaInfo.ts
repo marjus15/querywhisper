@@ -10,7 +10,7 @@ export interface ColumnInfo {
   is_nullable: boolean;
   default_value?: string;
   description?: string;
-  sample_values?: any[];
+  sample_values?: unknown[];
 }
 
 export interface TableInfo {
@@ -102,7 +102,7 @@ export async function getSchemaStatus(): Promise<SchemaStatusResponse> {
   }
 }
 
-export async function refreshSchemaFromBackend(token?: string): Promise<{ success: boolean; message: string; summary?: any }> {
+export async function refreshSchemaFromBackend(token?: string): Promise<{ success: boolean; message: string; summary?: unknown }> {
   const startTime = performance.now();
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };

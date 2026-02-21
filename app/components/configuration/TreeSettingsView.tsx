@@ -41,7 +41,8 @@ export default function TreeSettingsView({
   } = useTreeConfigState(user_id, conversation_id);
 
   // Models data state
-  const [modelsData, setModelsData] = useState<{
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- setter reserved for future backend */
+  const [modelsData, _setModelsData] = useState<{
     [key: string]: ModelProvider;
   } | null>(null);
   const [loadingModels, setLoadingModels] = useState<boolean>(true);

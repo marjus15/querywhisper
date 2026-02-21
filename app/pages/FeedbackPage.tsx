@@ -7,7 +7,7 @@ import { Filter } from "@/app/types/objects";
 import { motion } from "framer-motion";
 import { MdFeedback } from "react-icons/md";
 
-import { Feedback, FeedbackMetadata, FeedbackItem } from "../components/types";
+import { Feedback, FeedbackItem } from "../components/types";
 
 // Type for feedback collection data that matches the Feedback structure
 type FeedbackCollectionData = {
@@ -73,7 +73,7 @@ export default function Home() {
   const [feedbackPage, setFeedbackPage] = useState<number>(1);
   const feedbackPageSize = 20;
   const [feedbackFilter, setFeedbackFilter] = useState<string>("all");
-  const [maxPage, setMaxPage] = useState<number>(0);
+  const [maxPage] = useState<number>(0);
 
   // Feedback endpoint not available on current backend
   const fetchMetadata = async () => {
@@ -116,6 +116,7 @@ export default function Home() {
       });
     }
 
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for future backend */
     const filter_config: { type: string; filters: Filter[] } = {
       type: "all",
       filters: filters,
@@ -189,6 +190,7 @@ export default function Home() {
   };
 
   // Feedback delete endpoint not available on current backend
+  /* eslint-disable-next-line @typescript-eslint/no-unused-vars -- param reserved for future backend */
   const removeFeedback = async (_index: number) => {
   };
 

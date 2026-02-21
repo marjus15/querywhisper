@@ -85,10 +85,11 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
   const filteredData = useMemo(() => {
     if (!tableData || tableData.length === 0 || selectedColumns.length === 0) return [];
 
-    return tableData.map((item: any) => {
-      const filtered: any = {};
+    return tableData.map((item) => {
+      const row = item as Record<string, unknown>;
+      const filtered: Record<string, unknown> = {};
       selectedColumns.forEach((col) => {
-        filtered[col] = item[col];
+        filtered[col] = row[col];
       });
       return filtered;
     });
@@ -336,8 +337,8 @@ const TableView: React.FC<TableViewProps> = ({ payload, handleViewChange }) => {
       >
         {filteredData.length > 0 && selectedColumns.length > 0 ? (
           <DataTable
-            data={filteredData}
-            header={filteredData[0] || {}}
+            data={filteredData as { [key: string]: string }[]}
+            header={(filteredData[0] || {}) as { [key: string]: string }}
             stickyHeaders={true}
             maxHeight="50vh"
           />

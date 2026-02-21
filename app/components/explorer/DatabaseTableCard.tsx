@@ -2,7 +2,7 @@
 
 import React from "react";
 import { DatabaseTable } from "@/app/api/getDatabaseTables";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Database, Eye } from "lucide-react";

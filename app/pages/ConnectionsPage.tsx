@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useContext, useMemo } from "react";
+import React, { useState, useContext } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ConnectionContext,
@@ -258,7 +258,7 @@ const ConnectionFormDialog: React.FC<ConnectionFormDialogProps> = ({
         await createConnection(formData);
       }
       onClose();
-    } catch (error) {
+    } catch {
       // Error handled by context
     } finally {
       setIsSubmitting(false);
@@ -774,7 +774,7 @@ const ConnectionsPage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Delete Connection</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deletingConnection?.name}"? This
+              Are you sure you want to delete &quot;{deletingConnection?.name}&quot;? This
               action cannot be undone. All saved queries using this connection
               will also be deleted.
             </DialogDescription>

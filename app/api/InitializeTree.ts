@@ -1,12 +1,13 @@
 import { DecisionTreePayload } from "@/app/types/payloads";
 import { DecisionTreeNode } from "@/app/types/objects";
-import { host } from "@/app/components/host";
 
+/* eslint-disable @typescript-eslint/no-unused-vars -- API param reserved for future backend */
 export async function initializeTree(
   user_id: string,
   conversation_id: string,
-  low_memory: boolean = false
+  _low_memory: boolean = false
 ): Promise<DecisionTreePayload> {
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   const startTime = performance.now();
   
   // TODO: Backend /init/tree endpoint is not implemented yet

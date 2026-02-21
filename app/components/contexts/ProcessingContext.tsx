@@ -1,9 +1,7 @@
 "use client";
 
 import { Collection } from "@/app/types/objects";
-import { getWebsocketHost } from "../host";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
-import { ProcessingSocketPayload } from "@/app/types/socketPayloads";
 import { CollectionContext } from "./CollectionContext";
 import { ToastContext } from "./ToastContext";
 
@@ -18,15 +16,10 @@ export const ProcessingProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const { fetchCollections } = useContext(CollectionContext);
-  const {
-    showErrorToast,
-    finishProcessingSocket,
-    updateProcessingSocket,
-    analyzeCollection,
-  } = useContext(ToastContext);
+  useContext(CollectionContext); // Reserved for future use
+  const { showErrorToast, analyzeCollection } = useContext(ToastContext);
 
-  const [socket, setSocket] = useState<WebSocket>();
+  const [socket] = useState<WebSocket>();
   const [reconnect, setReconnect] = useState(false);
 
   const initialRef = useRef(false);

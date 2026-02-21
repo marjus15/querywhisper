@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { useDatabase } from "../contexts/DatabaseContext";
 import DatabaseTableCard from "./DatabaseTableCard";
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,12 @@ import {
 import { IoIosRefresh } from "react-icons/io";
 import { IoWarningOutline } from "react-icons/io5";
 import { LuDatabase } from "react-icons/lu";
-import { RiFilePaperLine } from "react-icons/ri";
 import { motion } from "framer-motion";
 
 const DatabaseDashboard: React.FC = () => {
   const { tables, loadingTables, error, refreshDatabase } = useDatabase();
 
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [, setSelectedTable] = useState<string | null>(null);
 
   const handleViewTable = (tableName: string) => {
     setSelectedTable(tableName);

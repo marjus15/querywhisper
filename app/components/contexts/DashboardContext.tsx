@@ -37,6 +37,17 @@ export interface Dashboard {
   isLocked?: boolean; // Whether the layout is locked
 }
 
+/** API response shape for dashboard (from ApiContext) */
+interface ApiDashboardShape {
+  id: string;
+  title: string;
+  created_at: string;
+  data?: { charts?: unknown[]; tables?: unknown[]; layouts?: unknown[] };
+  is_locked?: boolean;
+  error?: string;
+  detail?: string;
+}
+
 interface DashboardContextType {
   dashboards: Dashboard[];
   currentDashboard: string | null;
@@ -70,10 +81,10 @@ export const DashboardContext = createContext<DashboardContextType>({
   removeDashboard: () => {},
   renameDashboard: () => {},
   selectDashboard: () => {},
-  addChartToDashboard: () => {},
+  addChartToDashboard: async () => {},
   removeChartFromDashboard: () => {},
   updateChartType: () => {},
-  addTableToDashboard: () => {},
+  addTableToDashboard: async () => {},
   removeTableFromDashboard: () => {},
   getDashboardById: () => undefined,
   getCurrentDashboardData: () => undefined,
@@ -86,9 +97,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [currentDashboard, setCurrentDashboard] = useState<string | null>(null);
-  const [dashboardCounter, setDashboardCounter] = useState(1);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setDashboardCounter] = useState(1);
+  const [, setIsInitialized] = useState(false);
+  const [, setIsLoading] = useState(false);
 
   const { showSuccessToast, showErrorToast } = useContext(ToastContext);
   const { getDashboards, createDashboard: createDashboardApi, updateDashboard: updateDashboardApi, deleteDashboard: deleteDashboardApi } = useContext(ApiContext);
@@ -106,20 +117,20 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [getDashboards]);
 
   // Helper function to convert API dashboard format to frontend format
-  const convertApiDashboardToFrontend = (apiDashboard: any): Dashboard => {
+  const convertApiDashboardToFrontend = (apiDashboard: ApiDashboardShape): Dashboard => {
     return {
       id: apiDashboard.id,
       title: apiDashboard.title,
       createdAt: apiDashboard.created_at,
-      charts: apiDashboard.data?.charts || [],
-      tables: apiDashboard.data?.tables || [],
-      layouts: apiDashboard.data?.layouts || [],
+      charts: (apiDashboard.data?.charts || []) as DashboardChart[],
+      tables: (apiDashboard.data?.tables || []) as DashboardTable[],
+      layouts: (apiDashboard.data?.layouts || []) as Layout[],
       isLocked: apiDashboard.is_locked || false,
     };
   };
 
   // Helper function to convert frontend dashboard format to API format
-  const convertFrontendDashboardToApi = (dashboard: Dashboard): any => {
+  const convertFrontendDashboardToApi = (dashboard: Dashboard) => {
     return {
       title: dashboard.title,
       data: {
@@ -171,7 +182,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       console.log("DashboardContext - Creating dashboard with title:", title.trim());
-      let apiDashboard: any;
+      let apiDashboard: ApiDashboardShape;
       try {
         apiDashboard = await createDashboardApi({
           title: title.trim(),
@@ -247,8 +258,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Dashboard not found");
       }
 
-      const updatedDashboard = { ...dashboard, title: newTitle };
-      const apiData = convertFrontendDashboardToApi(updatedDashboard);
       const apiResponse = await updateDashboardApi(id, { title: newTitle });
       
       const converted = convertApiDashboardToFrontend(apiResponse);

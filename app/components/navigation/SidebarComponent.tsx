@@ -6,28 +6,15 @@ import { SocketContext } from "../contexts/SocketContext";
 
 import { MdChatBubbleOutline } from "react-icons/md";
 import { GoDatabase } from "react-icons/go";
-import { AiOutlineExperiment } from "react-icons/ai";
 import { MdOutlineDashboard } from "react-icons/md";
 import { HiOutlineServerStack } from "react-icons/hi2";
-import { FaCircle, FaSquareXTwitter } from "react-icons/fa6";
+import { FaCircle } from "react-icons/fa6";
 import { IoIosWarning } from "react-icons/io";
 
 import HomeSubMenu from "@/app/components/navigation/HomeSubMenu";
 import DataSubMenu from "@/app/components/navigation/DataSubMenu";
 import EvalSubMenu from "@/app/components/navigation/EvalSubMenu";
 import DashboardsSubMenu from "@/app/components/navigation/DashboardsSubMenu";
-
-import { CgFileDocument } from "react-icons/cg";
-
-import { CgWebsite } from "react-icons/cg";
-import { IoNewspaperOutline } from "react-icons/io5";
-import { FaGithub } from "react-icons/fa";
-import { FaLinkedin } from "react-icons/fa";
-import { FaYoutube } from "react-icons/fa";
-
-import { RiRobot2Line } from "react-icons/ri";
-
-import { public_path } from "@/app/components/host";
 
 import {
   Sidebar,
@@ -42,13 +29,6 @@ import {
 } from "@/components/ui/sidebar";
 
 import { Separator } from "@/components/ui/separator";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { RouterContext } from "../contexts/RouterContext";
 import { CollectionContext } from "../contexts/CollectionContext";
 import { UserProfile } from "../auth/UserProfile";
@@ -59,7 +39,7 @@ import packageJson from "../../../package.json";
 const SidebarComponent: React.FC = () => {
   const { socketOnline } = useContext(SocketContext);
   const { changePage, currentPage } = useContext(RouterContext);
-  const { collections, loadingCollections } = useContext(CollectionContext);
+  const { collections } = useContext(CollectionContext);
   const { unsavedChanges } = useContext(SessionContext);
   const { tables, loadingTables, error } = useDatabase();
 
@@ -117,10 +97,6 @@ const SidebarComponent: React.FC = () => {
     ];
     setItems(_items);
   }, [collections, unsavedChanges, tables, error, loadingTables]);
-
-  const openNewTab = (url: string) => {
-    window.open(url, "_blank");
-  };
 
   return (
     <Sidebar className="fade-in">

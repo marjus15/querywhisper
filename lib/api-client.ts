@@ -39,7 +39,7 @@ class ApiClient {
     return response.json();
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown): Promise<T> {
     const headers = await this.getAuthHeaders();
     
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -59,7 +59,7 @@ class ApiClient {
         } else if (errorData.message) {
           errorMessage = errorData.message;
         }
-      } catch (e) {
+      } catch {
         // If response is not JSON, use status text
         errorMessage = response.statusText || errorMessage;
       }
@@ -75,7 +75,7 @@ class ApiClient {
     return result;
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown): Promise<T> {
     const headers = await this.getAuthHeaders();
     
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
